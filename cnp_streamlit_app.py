@@ -226,10 +226,10 @@ def display_osi_stack():
             "data_unit": "Packets",
             "functions": [
                 "RIP Routing (plot_rip_graph)",
-                "Dijkstra\"s algorithm for shortest path (nx.dijkstra_path)",
+                "Dijkstra's algorithm for shortest path (nx.dijkstra_path)",
                 "Graph visualization of network topology"
             ],
-            "data_flow": "Receives segments/packets from the Transport Layer. Determines the optimal route for these packets using RIP and Dijkstra\"s algorithm. Passes packets to the Data Link Layer."
+            "data_flow": "Receives segments/packets from the Transport Layer. Determines the optimal route for these packets using RIP and Dijkstra's algorithm. Passes packets to the Data Link Layer."
         },
         "2. Data Link Layer": {
             "description": "Provides reliable data transfer across a physical link. It handles framing, physical addressing (MAC addresses), error detection, and flow control within a local network segment.",
@@ -250,12 +250,12 @@ def display_osi_stack():
     }
 
     for layer_name, details in osi_layers_details.items():
-        with st.expander(f"**{layer_name}** - {details[\"data_unit\"]}"):
-            st.write(f"**Description:** {details[\"description\"]}")
+        with st.expander(f"**{layer_name}** - {details['data_unit']}"):
+            st.write(f"**Description:** {details['description']}")
             st.write(f"**Key Functions in Script:**")
-            for func in details[\"functions\"]:
+            for func in details['functions']:
                 st.markdown(f"- {func}")
-            st.write(f"**Data Flow:** {details[\"data_flow\"]}")
+            st.write(f"**Data Flow:** {details['data_flow']}")
 
 # ========================
 # Main Streamlit App
