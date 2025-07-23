@@ -232,6 +232,8 @@ def main():
     target = st.number_input("To Node", min_value=0, value=1)
 
     if st.button("🚀 Run Full Simulation"):
+        total_chunks_sent = len(data_chunks)
+
         time_series, cwnd_series, ssthresh_series, ack_series, state_series, transitions = simulate_tcp_on_data(
             total_packets, ssthresh_init, loss_packets, variant)
 
