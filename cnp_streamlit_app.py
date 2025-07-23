@@ -231,7 +231,17 @@ def main():
     source = st.number_input("From Node", min_value=0, value=0)
     target = st.number_input("To Node", min_value=0, value=1)
 
-           st.subheader("📋 TCP Event Log")
+    if st.button("🚀 Run Full Simulation"):
+        time_series, cwnd_series, ssthresh_series, ack_series, state_series, transitions = simulate_tcp_on_data(
+            total_packets, ssthresh_init, loss_packets, variant)
+
+        st.subheader("📈 CWND vs Time Graphs")
+        plot_graphs(time_series, cwnd_series, ssthresh_series, ack_series, transitions)
+
+        st.subheader("🌐 RIP Network Graph")
+        plot_rip_graph(rip_table, source, target)
+
+        st.subheader("📋 TCP Event Log")
         st.text(f"{'Time':<10}{'CWND':<10}{'SSTHRESH':<10}{'State':<20}")
         st.text("-"*50)
         for t, c, ssth, state in zip(time_series, cwnd_series, ssthresh_series, state_series):
@@ -254,8 +264,9 @@ def main():
                 else:
                     st.success("✅ Packet successfully delivered.")
 
+       
+        
         st.subheader("📤 Receiver Output")
-
         try:
             start_dec = time.time()
             unstuffed = character_unstuff(stuffed_data)
