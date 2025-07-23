@@ -165,16 +165,36 @@ def plot_rip_graph(rip_table, source=None, target=None):
     nx.draw(G, pos, with_labels=True, node_color='lightblue', node_size=800, font_size=12, ax=ax)
     nx.draw_networkx_edge_labels(G, pos, edge_labels=labels, ax=ax)
     ax.set_title('RIP Routing Topology')
-    st.pyplot(fig)
-
+    
     if source is not None and target is not None:
         try:
-            path = nx.dijkstra_path(G, source=source, target=target, weight=\'weight\')
+            path = nx.dijkstra_path(G, source=source, target=target, weight='weight')
             path_edges = list(zip(path, path[1:]))
-            nx.draw_networkx_edges(G, pos, edgelist=path_edges, edge_color=\'r\', width=2, ax=ax)
+            nx.draw_networkx_edges(G, pos, edgelist=path_edges, edge_color='r', width=3, ax=ax)
             st.success(f"🔀 Shortest path from {source} to {target}: {path}")
         except nx.NetworkXNoPath:
             st.error(f"❌ No path from {source} to {target}")
+    
+    st.pyplot(fig)
+
+# ========================
+# OSI Layer Log Function
+# ========================
+def display_osi_log():
+    st.subheader("📋 OSI Model Layer Log")
+    
+    osi_layers = {
+        "7. Application Layer": "Streamlit UI - User interface for network simulation",
+        "6. Presentation Layer": "AES Encryption/Decryption - Data security and character stuffing",
+        "5. Session Layer": "Session management through Streamlit application flow",
+        "4. Transport Layer": "TCP Congestion Control - CWND, SSTHRESH simulation",
+        "3. Network Layer": "RIP Routing - Shortest path calculation using Dijkstra's algorithm",
+        "2. Data Link Layer": "Bit error simulation - Frame integrity checking",
+        "1. Physical Layer": "Packet size and error rate simulation"
+    }
+    
+    for layer, description in osi_layers.items():
+        st.write(f"**{layer}:** {description}")
 
 # ========================
 # Main Streamlit App
@@ -235,15 +255,17 @@ def main():
 
     if st.button("🚀 Run Full Simulation"):
         
-
         time_series, cwnd_series, ssthresh_series, ack_series, state_series, transitions = simulate_tcp_on_data(
             total_packets, ssthresh_init, loss_packets, variant)
 
         st.subheader("📈 CWND vs Time Graphs")
         plot_graphs(time_series, cwnd_series, ssthresh_series, ack_series, transitions)
 
-        st.subheader("🌐 RIP Network Graph")
+        st.subheader("🌐 RIP Network Graph with Shortest Path Highlighted")
         plot_rip_graph(rip_table, source, target)
+
+        # Display OSI Log
+        display_osi_log()
 
         st.subheader("📋 TCP Event Log")
         st.text(f"{'Time':<10}{'CWND':<10}{'SSTHRESH':<10}{'State':<20}")
@@ -251,8 +273,6 @@ def main():
         for t, c, ssth, state in zip(time_series, cwnd_series, ssthresh_series, state_series):
             st.text(f"{t:<10.2f}{c:<10.2f}{int(ssth):<10}{state:<20}")
 
-           
-        
         st.subheader("📤 Receiver Output")
         try:
             start_dec = time.time()
