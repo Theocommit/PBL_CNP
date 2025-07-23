@@ -28,14 +28,14 @@ def aes_encrypt_visual(data, key):
     for i, block in enumerate(blocks):
         encrypted = cipher.encrypt(block)
         encrypted_blocks.append(encrypted)
-        st.code(f"Block {i+1} Input:  {block.hex()}\nBlock {i+1} Encrypted: {encrypted.hex()}", language='\text\')
+        st.code(f"Block {i+1} Input:  {block.hex()}\nBlock {i+1} Encrypted: {encrypted.hex()}", language="text")
         time.sleep(0.5)
     end_enc = time.time()
 
     global encryption_time
     encryption_time = end_enc - start_enc
 
-    return b\'\'.join(encrypted_blocks)
+    return b"".join(encrypted_blocks)
 
 def aes_decrypt(ciphertext, key):
     cipher = AES.new(key, AES.MODE_ECB)
@@ -93,7 +93,7 @@ def simulate_bit_errors(data, error_rate_percent):
 def simulate_tcp_on_data(total_packets, ssthresh_init, loss_packets, variant="Tahoe"):
     cwnd = 1
     ssthresh = ssthresh_init
-    state = \'Slow Start\'
+    state = "Slow Start"
     time_series, cwnd_series, ssthresh_series = [], [], []
     ack_series, state_series, transitions = [], [], []
 
@@ -110,13 +110,13 @@ def simulate_tcp_on_data(total_packets, ssthresh_init, loss_packets, variant="Ta
         if i in loss_packets:
             ssthresh = max(cwnd / 2, 1)
             cwnd = 1 if variant == "Tahoe" else max(1, ssthresh)
-            state = \'Slow Start\'
+            state = "Slow Start"
         else:
-            if state == \'Slow Start\':
+            if state == "Slow Start":
                 cwnd *= 2
                 if cwnd >= ssthresh:
-                    state = \'Congestion Avoidance\'
-            elif state == \'Congestion Avoidance\':
+                    state = "Congestion Avoidance"
+            elif state == "Congestion Avoidance":
                 cwnd += 1
 
         i += 1
@@ -132,18 +132,18 @@ def plot_graphs(time_series, cwnd_series, ssthresh_series, ack_series, transitio
     for idx in range(1, len(time_series) + 1):
         fig, ax = plt.subplots(2, 1, figsize=(10, 6))
 
-        ax[0].step(time_series[:idx], cwnd_series[:idx], where=\'post\', label=\'CWND\', linewidth=2)
-        ax[0].step(time_series[:idx], ssthresh_series[:idx], where=\'post\', linestyle=\'--\', label=\'SSTHRESH\')
-        ax[0].set_title(\'TCP CWND Evolution\')
-        ax[0].set_xlabel(\'Time\')
-        ax[0].set_ylabel(\'Window Size\')
+        ax[0].step(time_series[:idx], cwnd_series[:idx], where="post", label="CWND", linewidth=2)
+        ax[0].step(time_series[:idx], ssthresh_series[:idx], where="post", linestyle="--", label="SSTHRESH")
+        ax[0].set_title("TCP CWND Evolution")
+        ax[0].set_xlabel("Time")
+        ax[0].set_ylabel("Window Size")
         ax[0].legend()
         ax[0].grid(True)
 
-        ax[1].plot(ack_series[:idx], cwnd_series[:idx], \'o-\\'', label=\'ACKs\')
-        ax[1].set_title(\'ACKs and CWND\')
-        ax[1].set_xlabel(\'Packet Index\')
-        ax[1].set_ylabel(\'CWND\')
+        ax[1].plot(ack_series[:idx], cwnd_series[:idx], "o-", label="ACKs")
+        ax[1].set_title("ACKs and CWND")
+        ax[1].set_xlabel("Packet Index")
+        ax[1].set_ylabel("CWND")
         ax[1].grid(True)
 
         chart_placeholder.pyplot(fig)
@@ -155,22 +155,22 @@ def plot_graphs(time_series, cwnd_series, ssthresh_series, ack_series, transitio
 def plot_rip_graph(rip_table, source=None, target=None):
     G = nx.DiGraph()
     for entry in rip_table:
-        src, dst, weight = entry[\'node\'], entry[\'dest\'], entry[\'distance\']
+        src, dst, weight = entry["node"], entry["dest"], entry["distance"]
         G.add_edge(src, dst, weight=weight)
 
     pos = nx.spring_layout(G, seed=42)
-    labels = nx.get_edge_attributes(G, \'weight\')
+    labels = nx.get_edge_attributes(G, "weight")
 
     fig, ax = plt.subplots(figsize=(8, 6))
-    nx.draw(G, pos, with_labels=True, node_color=\'lightblue\', node_size=800, font_size=12, ax=ax)
+    nx.draw(G, pos, with_labels=True, node_color="lightblue", node_size=800, font_size=12, ax=ax)
     nx.draw_networkx_edge_labels(G, pos, edge_labels=labels, ax=ax)
-    ax.set_title(\'RIP Routing Topology\')
+    ax.set_title("RIP Routing Topology")
     
     if source is not None and target is not None:
         try:
-            path = nx.dijkstra_path(G, source=source, target=target, weight=\'weight\')
+            path = nx.dijkstra_path(G, source=source, target=target, weight="weight")
             path_edges = list(zip(path, path[1:]))
-            nx.draw_networkx_edges(G, pos, edgelist=path_edges, edge_color=\'r\', width=3, ax=ax)
+            nx.draw_networkx_edges(G, pos, edgelist=path_edges, edge_color="r", width=3, ax=ax)
             st.success(f"🔀 Shortest path from {source} to {target}: {path}")
         except nx.NetworkXNoPath:
             st.error(f"❌ No path from {source} to {target}")
@@ -226,10 +226,10 @@ def display_osi_stack():
             "data_unit": "Packets",
             "functions": [
                 "RIP Routing (plot_rip_graph)",
-                "Dijkstra\'s algorithm for shortest path (nx.dijkstra_path)",
+                "Dijkstra\"s algorithm for shortest path (nx.dijkstra_path)",
                 "Graph visualization of network topology"
             ],
-            "data_flow": "Receives segments/packets from the Transport Layer. Determines the optimal route for these packets using RIP and Dijkstra\'s algorithm. Passes packets to the Data Link Layer."
+            "data_flow": "Receives segments/packets from the Transport Layer. Determines the optimal route for these packets using RIP and Dijkstra\"s algorithm. Passes packets to the Data Link Layer."
         },
         "2. Data Link Layer": {
             "description": "Provides reliable data transfer across a physical link. It handles framing, physical addressing (MAC addresses), error detection, and flow control within a local network segment.",
@@ -250,12 +250,12 @@ def display_osi_stack():
     }
 
     for layer_name, details in osi_layers_details.items():
-        with st.expander(f"**{layer_name}** - {details[\'data_unit\']}"):
-            st.write(f"**Description:** {details[\'description\]}")
+        with st.expander(f"**{layer_name}** - {details[\"data_unit\"]}"):
+            st.write(f"**Description:** {details[\"description\"]}")
             st.write(f"**Key Functions in Script:**")
-            for func in details[\'functions\']:
+            for func in details[\"functions\"]:
                 st.markdown(f"- {func}")
-            st.write(f"**Data Flow:** {details[\'data_flow\]}")
+            st.write(f"**Data Flow:** {details[\"data_flow\"]}")
 
 # ========================
 # Main Streamlit App
@@ -309,7 +309,7 @@ def main():
                 next_hop = st.number_input("Next Hop", key=f"h_{i}_{j}")
             with col3:
                 distance = st.number_input("Distance", key=f"dist_{i}_{j}")
-            rip_table.append({\'node\': i, \'dest\': dest, \'next_hop\': next_hop, \'distance\': distance})
+            rip_table.append({"node": i, "dest": dest, "next_hop": next_hop, "distance": distance})
 
     source = st.number_input("From Node", min_value=0, value=0)
     target = st.number_input("To Node", min_value=0, value=1)
@@ -329,7 +329,7 @@ def main():
         display_osi_stack()
 
         st.subheader("📋 TCP Event Log")
-        st.text(f"{\'Time\':<10}{\'CWND\':<10}{\'SSTHRESH\':<10}{\'State\':<20}")
+        st.text(f"{"Time":<10}{"CWND":<10}{"SSTHRESH":<10}{"State":<20}")
         st.text("-"*50)
         for t, c, ssth, state in zip(time_series, cwnd_series, ssthresh_series, state_series):
             st.text(f"{t:<10.2f}{c:<10.2f}{int(ssth):<10}{state:<20}")
@@ -341,7 +341,7 @@ def main():
             decrypted = aes_decrypt(unstuffed, key)
             end_dec = time.time()
             decryption_time = end_dec - start_dec
-            st.code(decrypted.decode(errors=\'ignore\'), language=\'text\')
+            st.code(decrypted.decode(errors="ignore"), language="text")
         except Exception as e:
             st.error("Decryption failed: " + str(e))
             decryption_time = 0.0
