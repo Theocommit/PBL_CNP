@@ -232,7 +232,7 @@ def main():
     target = st.number_input("To Node", min_value=0, value=1)
 
     if st.button("🚀 Run Full Simulation"):
-        total_chunks_sent = len(data_chunks)
+        
 
         time_series, cwnd_series, ssthresh_series, ack_series, state_series, transitions = simulate_tcp_on_data(
             total_packets, ssthresh_init, loss_packets, variant)
@@ -249,24 +249,7 @@ def main():
         for t, c, ssth, state in zip(time_series, cwnd_series, ssthresh_series, state_series):
             st.text(f"{t:<10.2f}{c:<10.2f}{int(ssth):<10}{state:<20}")
 
-        st.subheader("🧱 OSI Layer Log")
-        for pkt_num in range(total_chunks_sent):
-            with st.expander(f"📦 Packet {pkt_num + 1} Log"):
-                st.text(f"""\
-[Layer 7 - Application]      File selected for transmission
-[Layer 6 - Presentation]     Encrypted using AES (ECB)
-[Layer 5 - Session]          Session initiated with receiver
-[Layer 4 - Transport]        TCP Segment created (MSS = {packet_size})
-[Layer 3 - Network]          RIP Routing Path selected (Node {source} to {target})
-[Layer 2 - Data Link]        Character Stuffing applied
-[Layer 1 - Physical]         Bits sent with error rate = {error_rate * 100:.1f}%
-                """)
-                if pkt_num in loss_packets:
-                    st.error("🚫 Packet lost in transmission!")
-                else:
-                    st.success("✅ Packet successfully delivered.")
-
-       
+           
         
         st.subheader("📤 Receiver Output")
         try:
