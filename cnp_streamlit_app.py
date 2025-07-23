@@ -168,8 +168,9 @@ def plot_rip_graph(rip_table, source=None, target=None):
     st.pyplot(fig)
 
     if source is not None and target is not None:
-        try:
-            path = nx.dijkstra_path(G, source=source, target=target, weight='weight')
+        try            path = nx.dijkstra_path(G, source=source, target=target, weight=\'weight\')
+            path_edges = list(zip(path, path[1:]))
+            nx.draw_networkx_edges(G, pos, edgelist=path_edges, edge_color=\'r\', width=2, ax=ax)
             st.success(f"🔀 Shortest path from {source} to {target}: {path}")
         except nx.NetworkXNoPath:
             st.error(f"❌ No path from {source} to {target}")
