@@ -28,14 +28,14 @@ def aes_encrypt_visual(data, key):
     for i, block in enumerate(blocks):
         encrypted = cipher.encrypt(block)
         encrypted_blocks.append(encrypted)
-        st.code(f"Block {i+1} Input:  {block.hex()}\nBlock {i+1} Encrypted: {encrypted.hex()}", language='text')
+        st.code(f"Block {i+1} Input:  {block.hex()}\nBlock {i+1} Encrypted: {encrypted.hex()}", language=\'text\')
         time.sleep(0.5)
     end_enc = time.time()
 
     global encryption_time
     encryption_time = end_enc - start_enc
 
-    return b''.join(encrypted_blocks)
+    return b\'\'.join(encrypted_blocks)
 
 def aes_decrypt(ciphertext, key):
     cipher = AES.new(key, AES.MODE_ECB)
@@ -93,7 +93,7 @@ def simulate_bit_errors(data, error_rate_percent):
 def simulate_tcp_on_data(total_packets, ssthresh_init, loss_packets, variant="Tahoe"):
     cwnd = 1
     ssthresh = ssthresh_init
-    state = 'Slow Start'
+    state = \'Slow Start\'
     time_series, cwnd_series, ssthresh_series = [], [], []
     ack_series, state_series, transitions = [], [], []
 
@@ -110,13 +110,13 @@ def simulate_tcp_on_data(total_packets, ssthresh_init, loss_packets, variant="Ta
         if i in loss_packets:
             ssthresh = max(cwnd / 2, 1)
             cwnd = 1 if variant == "Tahoe" else max(1, ssthresh)
-            state = 'Slow Start'
+            state = \'Slow Start\'
         else:
-            if state == 'Slow Start':
+            if state == \'Slow Start\':
                 cwnd *= 2
                 if cwnd >= ssthresh:
-                    state = 'Congestion Avoidance'
-            elif state == 'Congestion Avoidance':
+                    state = \'Congestion Avoidance\'
+            elif state == \'Congestion Avoidance\':
                 cwnd += 1
 
         i += 1
@@ -132,18 +132,18 @@ def plot_graphs(time_series, cwnd_series, ssthresh_series, ack_series, transitio
     for idx in range(1, len(time_series) + 1):
         fig, ax = plt.subplots(2, 1, figsize=(10, 6))
 
-        ax[0].step(time_series[:idx], cwnd_series[:idx], where='post', label='CWND', linewidth=2)
-        ax[0].step(time_series[:idx], ssthresh_series[:idx], where='post', linestyle='--', label='SSTHRESH')
-        ax[0].set_title('TCP CWND Evolution')
-        ax[0].set_xlabel('Time')
-        ax[0].set_ylabel('Window Size')
+        ax[0].step(time_series[:idx], cwnd_series[:idx], where=\'post\', label=\'CWND\', linewidth=2)
+        ax[0].step(time_series[:idx], ssthresh_series[:idx], where=\'post\', linestyle=\'--\', label=\'SSTHRESH\')
+        ax[0].set_title(\'TCP CWND Evolution\')
+        ax[0].set_xlabel(\'Time\')
+        ax[0].set_ylabel(\'Window Size\')
         ax[0].legend()
         ax[0].grid(True)
 
-        ax[1].plot(ack_series[:idx], cwnd_series[:idx], 'o-', label='ACKs')
-        ax[1].set_title('ACKs and CWND')
-        ax[1].set_xlabel('Packet Index')
-        ax[1].set_ylabel('CWND')
+        ax[1].plot(ack_series[:idx], cwnd_series[:idx], \'o-\\'', label=\'ACKs\')
+        ax[1].set_title(\'ACKs and CWND\')
+        ax[1].set_xlabel(\'Packet Index\')
+        ax[1].set_ylabel(\'CWND\')
         ax[1].grid(True)
 
         chart_placeholder.pyplot(fig)
@@ -155,22 +155,22 @@ def plot_graphs(time_series, cwnd_series, ssthresh_series, ack_series, transitio
 def plot_rip_graph(rip_table, source=None, target=None):
     G = nx.DiGraph()
     for entry in rip_table:
-        src, dst, weight = entry['node'], entry['dest'], entry['distance']
+        src, dst, weight = entry[\'node\'], entry[\'dest\'], entry[\'distance\']
         G.add_edge(src, dst, weight=weight)
 
     pos = nx.spring_layout(G, seed=42)
-    labels = nx.get_edge_attributes(G, 'weight')
+    labels = nx.get_edge_attributes(G, \'weight\')
 
     fig, ax = plt.subplots(figsize=(8, 6))
-    nx.draw(G, pos, with_labels=True, node_color='lightblue', node_size=800, font_size=12, ax=ax)
+    nx.draw(G, pos, with_labels=True, node_color=\'lightblue\', node_size=800, font_size=12, ax=ax)
     nx.draw_networkx_edge_labels(G, pos, edge_labels=labels, ax=ax)
-    ax.set_title('RIP Routing Topology')
+    ax.set_title(\'RIP Routing Topology\')
     
     if source is not None and target is not None:
         try:
-            path = nx.dijkstra_path(G, source=source, target=target, weight='weight')
+            path = nx.dijkstra_path(G, source=source, target=target, weight=\'weight\')
             path_edges = list(zip(path, path[1:]))
-            nx.draw_networkx_edges(G, pos, edgelist=path_edges, edge_color='r', width=3, ax=ax)
+            nx.draw_networkx_edges(G, pos, edgelist=path_edges, edge_color=\'r\', width=3, ax=ax)
             st.success(f"🔀 Shortest path from {source} to {target}: {path}")
         except nx.NetworkXNoPath:
             st.error(f"❌ No path from {source} to {target}")
@@ -178,23 +178,84 @@ def plot_rip_graph(rip_table, source=None, target=None):
     st.pyplot(fig)
 
 # ========================
-# OSI Layer Log Function
+# OSI Layer Details
 # ========================
-def display_osi_log():
-    st.subheader("📋 OSI Model Layer Log")
+def display_osi_stack():
+    st.subheader("🌐 OSI Model Stack")
     
-    osi_layers = {
-        "7. Application Layer": "Streamlit UI - User interface for network simulation",
-        "6. Presentation Layer": "AES Encryption/Decryption - Data security and character stuffing",
-        "5. Session Layer": "Session management through Streamlit application flow",
-        "4. Transport Layer": "TCP Congestion Control - CWND, SSTHRESH simulation",
-        "3. Network Layer": "RIP Routing - Shortest path calculation using Dijkstra's algorithm",
-        "2. Data Link Layer": "Bit error simulation - Frame integrity checking",
-        "1. Physical Layer": "Packet size and error rate simulation"
+    osi_layers_details = {
+        "7. Application Layer": {
+            "description": "Provides network services directly to end-user applications. Handles high-level protocols, data formatting, and user interfaces.",
+            "data_unit": "Data",
+            "functions": [
+                "User interaction through Streamlit UI (main function)",
+                "Input of simulation parameters (st.number_input, st.selectbox, st.slider)",
+                "Display of simulation results (st.subheader, st.write, st.code, st.markdown)"
+            ],
+            "data_flow": "User data (e.g., text input, configuration choices) is passed down to the Presentation Layer."
+        },
+        "6. Presentation Layer": {
+            "description": "Responsible for data translation, encryption, decryption, and compression. Ensures that data is in a readable format for the Application Layer.",
+            "data_unit": "Data",
+            "functions": [
+                "AES Encryption/Decryption (aes_encrypt_visual, aes_decrypt)",
+                "Character Stuffing/Unstuffing (character_stuff, character_unstuff)"
+            ],
+            "data_flow": "Receives user data from the Application Layer. Encrypts and stuffs the data, then passes the formatted data to the Session Layer."
+        },
+        "5. Session Layer": {
+            "description": "Establishes, manages, and terminates communication sessions between applications. Handles dialogue control and synchronization.",
+            "data_unit": "Data",
+            "functions": [
+                "Implicit session management through Streamlit application state and flow"
+            ],
+            "data_flow": "Receives formatted data from the Presentation Layer. Manages the ongoing interaction session and passes data to the Transport Layer."
+        },
+        "4. Transport Layer": {
+            "description": "Provides reliable and transparent transfer of data between end systems. Handles segmentation, reassembly, flow control, and error recovery.",
+            "data_unit": "Segments",
+            "functions": [
+                "TCP Congestion Control Simulation (simulate_tcp_on_data)",
+                "CWND and SSTHRESH management",
+                "Graph plotting of TCP evolution (plot_graphs)"
+            ],
+            "data_flow": "Receives data from the Session Layer. Segments the data into packets (implicitly, as the simulation deals with total packets) and applies TCP congestion control logic. Passes segments/packets to the Network Layer."
+        },
+        "3. Network Layer": {
+            "description": "Responsible for logical addressing and routing of data packets across different networks. It determines the best path for data delivery.",
+            "data_unit": "Packets",
+            "functions": [
+                "RIP Routing (plot_rip_graph)",
+                "Dijkstra\'s algorithm for shortest path (nx.dijkstra_path)",
+                "Graph visualization of network topology"
+            ],
+            "data_flow": "Receives segments/packets from the Transport Layer. Determines the optimal route for these packets using RIP and Dijkstra\'s algorithm. Passes packets to the Data Link Layer."
+        },
+        "2. Data Link Layer": {
+            "description": "Provides reliable data transfer across a physical link. It handles framing, physical addressing (MAC addresses), error detection, and flow control within a local network segment.",
+            "data_unit": "Frames",
+            "functions": [
+                "Bit Error Simulation (simulate_bit_errors)"
+            ],
+            "data_flow": "Receives packets from the Network Layer. Simulates bit errors that might occur during transmission. Passes frames (with potential errors) to the Physical Layer."
+        },
+        "1. Physical Layer": {
+            "description": "Defines the physical characteristics of the network, including cabling, connectors, and electrical signals. It deals with the raw bit stream transmission.",
+            "data_unit": "Bits",
+            "functions": [
+                "Implicit simulation of physical medium characteristics (packet_size, error_rate)"
+            ],
+            "data_flow": "Receives frames from the Data Link Layer. Converts them into raw bit streams for transmission over the simulated physical medium. The `error_rate` directly influences the integrity of these bits."
+        }
     }
-    
-    for layer, description in osi_layers.items():
-        st.write(f"**{layer}:** {description}")
+
+    for layer_name, details in osi_layers_details.items():
+        with st.expander(f"**{layer_name}** - {details[\'data_unit\']}"):
+            st.write(f"**Description:** {details[\'description\]}")
+            st.write(f"**Key Functions in Script:**")
+            for func in details[\'functions\']:
+                st.markdown(f"- {func}")
+            st.write(f"**Data Flow:** {details[\'data_flow\]}")
 
 # ========================
 # Main Streamlit App
@@ -248,7 +309,7 @@ def main():
                 next_hop = st.number_input("Next Hop", key=f"h_{i}_{j}")
             with col3:
                 distance = st.number_input("Distance", key=f"dist_{i}_{j}")
-            rip_table.append({'node': i, 'dest': dest, 'next_hop': next_hop, 'distance': distance})
+            rip_table.append({\'node\': i, \'dest\': dest, \'next_hop\': next_hop, \'distance\': distance})
 
     source = st.number_input("From Node", min_value=0, value=0)
     target = st.number_input("To Node", min_value=0, value=1)
@@ -265,10 +326,10 @@ def main():
         plot_rip_graph(rip_table, source, target)
 
         # Display OSI Log
-        display_osi_log()
+        display_osi_stack()
 
         st.subheader("📋 TCP Event Log")
-        st.text(f"{'Time':<10}{'CWND':<10}{'SSTHRESH':<10}{'State':<20}")
+        st.text(f"{\'Time\':<10}{\'CWND\':<10}{\'SSTHRESH\':<10}{\'State\':<20}")
         st.text("-"*50)
         for t, c, ssth, state in zip(time_series, cwnd_series, ssthresh_series, state_series):
             st.text(f"{t:<10.2f}{c:<10.2f}{int(ssth):<10}{state:<20}")
@@ -280,7 +341,7 @@ def main():
             decrypted = aes_decrypt(unstuffed, key)
             end_dec = time.time()
             decryption_time = end_dec - start_dec
-            st.code(decrypted.decode(errors='ignore'), language='text')
+            st.code(decrypted.decode(errors=\'ignore\'), language=\'text\')
         except Exception as e:
             st.error("Decryption failed: " + str(e))
             decryption_time = 0.0
@@ -318,3 +379,5 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+
