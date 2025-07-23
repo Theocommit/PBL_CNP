@@ -28,7 +28,7 @@ def aes_encrypt_visual(data, key):
     for i, block in enumerate(blocks):
         encrypted = cipher.encrypt(block)
         encrypted_blocks.append(encrypted)
-        st.code(f"Block {i+1} Input:  {block.hex()}\nBlock {i+1} Encrypted: {encrypted.hex()}", language=\'text\')
+        st.code(f"Block {i+1} Input:  {block.hex()}\nBlock {i+1} Encrypted: {encrypted.hex()}", language='\text\')
         time.sleep(0.5)
     end_enc = time.time()
 
