@@ -24,11 +24,16 @@ def aes_encrypt_visual(data, key):
     st.markdown("- Data is padded using **PKCS#7** to match 16-byte AES block size.")
     st.markdown("- Encryption is performed using **Electronic Codebook (ECB)** mode block-by-block.")
 
+    start_enc = time.time()
     for i, block in enumerate(blocks):
         encrypted = cipher.encrypt(block)
         encrypted_blocks.append(encrypted)
         st.code(f"Block {i+1} Input:  {block.hex()}\nBlock {i+1} Encrypted: {encrypted.hex()}", language='text')
         time.sleep(0.5)
+    end_enc = time.time()
+
+    global encryption_time
+    encryption_time = end_enc - start_enc
 
     return b''.join(encrypted_blocks)
 
@@ -173,7 +178,7 @@ def plot_rip_graph(rip_table, source=None, target=None):
 # Main Streamlit App
 # ========================
 def main():
-    st.title("🛰️ Network Simulation with AES, Stuffing, RIP and TCP")
+    st.title("🚀 Network Simulation with AES, Stuffing, RIP and TCP")
     uploaded_file = st.file_uploader("📂 Upload input text file", type=["txt"])
     if not uploaded_file:
         st.warning("Please upload a .txt file to begin.")
@@ -185,7 +190,7 @@ def main():
     packet_size = st.number_input("📦 MSS (Max Segment Size)", min_value=1, value=64)
     ssthresh_init = st.number_input("🔧 Initial SSTHRESH", min_value=1, value=8)
     variant = st.selectbox("⚙️ TCP Variant", ["Tahoe", "Reno"])
-    num_nodes = st.number_input("🧭 Number of RIP Nodes", min_value=1, value=3)
+    num_nodes = st.number_input("🧝 Number of RIP Nodes", min_value=1, value=3)
     error_rate = st.slider("💥 Bit Error Rate (%)", 0, 100, 0)
     loss_rate = st.slider("📉 Packet Loss Rate (%)", 0, 100, 20)
 
@@ -244,11 +249,46 @@ def main():
 
         st.subheader("📤 Receiver Output")
         try:
+            start_dec = time.time()
             unstuffed = character_unstuff(stuffed_data)
             decrypted = aes_decrypt(unstuffed, key)
+            end_dec = time.time()
+            decryption_time = end_dec - start_dec
             st.code(decrypted.decode(errors='ignore'), language='text')
         except Exception as e:
             st.error("Decryption failed: " + str(e))
+            decryption_time = 0.0
+
+        # ===========================
+        # Simulation Metrics Summary
+        # ===========================
+        total_chunks_sent = total_packets
+        successfully_delivered = total_chunks_sent - len(loss_packets)
+        lost_packets = len(loss_packets)
+        avg_latency_per_packet = len(time_series) / total_chunks_sent
+        pdr = (successfully_delivered / total_chunks_sent) * 100
+        packet_loss_rate = (lost_packets / total_chunks_sent) * 100
+
+        st.subheader("📊 Simulation Results")
+        st.markdown(f"""
+        - ✅ **Total Chunks Sent**: {total_chunks_sent}  
+        - 📅 **Successfully Delivered**: {successfully_delivered}  
+        - ❌ **Lost Packets**: {lost_packets}  
+        - ⏱️ **Average Latency per Packet**: {avg_latency_per_packet:.3f} sec  
+        - 📦 **Packet Delivery Ratio (PDR)**: {pdr:.2f}%  
+        - 📉 **Packet Loss Rate**: {packet_loss_rate:.2f}%  
+        """)
+
+        st.markdown("### 🔐 Encryption/Decryption Overhead (AES)")
+        st.markdown(f"""
+        - **Sender Side**:  
+            - Total: `{encryption_time:.4f}` sec  
+            - Avg per chunk: `{(encryption_time/total_chunks_sent):.4f}` sec  
+
+        - **Receiver Side**:  
+            - Total: `{decryption_time:.4f}` sec  
+            - Avg per chunk: `{(decryption_time/successfully_delivered):.4f}` sec  
+        """)
 
 if __name__ == "__main__":
     main()
