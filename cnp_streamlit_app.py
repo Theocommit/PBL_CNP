@@ -301,11 +301,12 @@ def plot_rip_graph(rip_table, source=None, target=None):
             
             # Add legend
             legend_elements = [
-                plt.Line2D([0], [0], marker=\'o\', color=\'w\', markerfacecolor=\'green\', markersize=10, label=\'Source Node\'),
-                plt.Line2D([0], [0], marker=\'o\', color=\'w\', markerfacecolor=\'red\', markersize=10, label=\'Target Node\'),
-                plt.Line2D([0], [0], marker=\'o\', color=\'w\', markerfacecolor=\'yellow\', markersize=10, label=\'Intermediate Node\'),
-                plt.Line2D([0], [0], color=\'red\', linewidth=3, label=\'Shortest Path\')
-            ]
+    plt.Line2D([0], [0], marker='o', color='w', markerfacecolor='green', markersize=10, label='Source Node'),
+    plt.Line2D([0], [0], marker='o', color='w', markerfacecolor='red', markersize=10, label='Target Node'),
+    plt.Line2D([0], [0], marker='o', color='w', markerfacecolor='yellow', markersize=10, label='Intermediate Node'),
+    plt.Line2D([0], [0], color='red', linewidth=3, label='Shortest Path')
+                ]
+
             ax.legend(handles=legend_elements, loc=\'upper right\')
             
             st.success(f"🔀 Shortest path from {source} to {target}: {" → ".join(map(str, path))} (Distance: {total_distance})")
