@@ -8,6 +8,18 @@ import tempfile
 import time
 import pandas as pd
 
+# Global list to store OSI layer logs
+osi_logs = {
+    "Presentation Layer": [],
+    "Transport Layer": [],
+    "Network Layer": [],
+    "Data Link Layer": [],
+    "Physical Layer": []
+}
+
+def add_osi_log(layer, message):
+    osi_logs[layer].append(message)
+
 # =========================
 # AES Encryption w/ Formula
 # =========================
@@ -18,60 +30,79 @@ def aes_encrypt_visual(data, key):
     blocks = [data[i:i+16] for i in range(0, len(data), 16)]
     encrypted_blocks = []
 
-    st.subheader("🔐 AES ECB Mode - Encryption Formula")
-    st.latex(r"""
-    \text{EncryptedBlock}_i = \text{AES}_{\text{Encrypt}}(\text{Key}, \text{Block}_i)
-    """)
-    st.markdown("- Data is padded using **PKCS#7** to match 16-byte AES block size.")
-    st.markdown("- Encryption is performed using **Electronic Codebook (ECB)** mode block-by-block.")
+    add_osi_log("Presentation Layer", "--- AES Encryption Started ---")
+    add_osi_log("Presentation Layer", f"Original Data Length: {len(data) - pad_len} bytes")
+    add_osi_log("Presentation Layer", f"Padded Data Length: {len(data)} bytes (PKCS#7 padding)")
 
     start_enc = time.time()
     for i, block in enumerate(blocks):
         encrypted = cipher.encrypt(block)
         encrypted_blocks.append(encrypted)
-        st.code(f"Block {i+1} Input:  {block.hex()}\nBlock {i+1} Encrypted: {encrypted.hex()}", language="text")
-        time.sleep(0.5)
+        add_osi_log("Presentation Layer", f"Block {i+1} Input:  {block.hex()}")
+        add_osi_log("Presentation Layer", f"Block {i+1} Encrypted: {encrypted.hex()}")
+        time.sleep(0.05) # Reduced sleep for faster logging
     end_enc = time.time()
 
     global encryption_time
     encryption_time = end_enc - start_enc
+    add_osi_log("Presentation Layer", "--- AES Encryption Finished ---")
 
     return b"".join(encrypted_blocks)
 
 def aes_decrypt(ciphertext, key):
     cipher = AES.new(key, AES.MODE_ECB)
+    add_osi_log("Presentation Layer", "--- AES Decryption Started ---")
+    add_osi_log("Presentation Layer", f"Ciphertext Length: {len(ciphertext)} bytes")
     if len(ciphertext) % 16 != 0:
+        original_len = len(ciphertext)
         ciphertext = ciphertext[:len(ciphertext) - (len(ciphertext) % 16)]
+        add_osi_log("Presentation Layer", f"Adjusted Ciphertext Length for decryption: {len(ciphertext)} bytes (removed {original_len - len(ciphertext)} excess bytes)")
+
     decrypted = cipher.decrypt(ciphertext)
     pad_len = decrypted[-1]
-    return decrypted[:-pad_len]
+    original_data = decrypted[:-pad_len]
+    add_osi_log("Presentation Layer", f"Decrypted Data Length (before unpadding): {len(decrypted)} bytes")
+    add_osi_log("Presentation Layer", f"Unpadded Data Length: {len(original_data)} bytes (removed {pad_len} bytes padding)")
+    add_osi_log("Presentation Layer", "--- AES Decryption Finished ---")
+    return original_data
 
 # ========================
 # Character Stuffing Logic
 # ========================
 def character_stuff(data):
     stuffed = bytearray()
+    add_osi_log("Presentation Layer", "--- Character Stuffing Started ---")
+    add_osi_log("Presentation Layer", f"Original Data Length (pre-stuffing): {len(data)} bytes")
     for byte in data:
-        if byte == 0x7E:
+        if byte == 0x7E: # FLAG byte
+            stuffed.append(0x7D) # ESCAPE byte
+            stuffed.append(byte ^ 0x20) # XOR with 0x20
+            add_osi_log("Presentation Layer", f"Stuffed FLAG byte (0x7E) -> 0x7D 0x{byte ^ 0x20:02X}")
+        elif byte == 0x7D: # ESCAPE byte
             stuffed.append(0x7D)
             stuffed.append(byte ^ 0x20)
-        elif byte == 0x7D:
-            stuffed.append(0x7D)
-            stuffed.append(byte ^ 0x20)
+            add_osi_log("Presentation Layer", f"Stuffed ESCAPE byte (0x7D) -> 0x7D 0x{byte ^ 0x20:02X}")
         else:
             stuffed.append(byte)
+    add_osi_log("Presentation Layer", f"Stuffed Data Length: {len(stuffed)} bytes")
+    add_osi_log("Presentation Layer", "--- Character Stuffing Finished ---")
     return bytes(stuffed)
 
 def character_unstuff(data):
     i = 0
     unstuffed = bytearray()
+    add_osi_log("Presentation Layer", "--- Character Unstuffing Started ---")
+    add_osi_log("Presentation Layer", f"Stuffed Data Length (pre-unstuffing): {len(data)} bytes")
     while i < len(data):
         if data[i] == 0x7D:
             i += 1
             unstuffed.append(data[i] ^ 0x20)
+            add_osi_log("Presentation Layer", f"Unstuffed 0x7D 0x{data[i]:02X} -> 0x{data[i] ^ 0x20:02X}")
         else:
             unstuffed.append(data[i])
         i += 1
+    add_osi_log("Presentation Layer", f"Unstuffed Data Length: {len(unstuffed)} bytes")
+    add_osi_log("Presentation Layer", "--- Character Unstuffing Finished ---")
     return bytes(unstuffed)
 
 # ========================
@@ -81,11 +112,25 @@ def simulate_bit_errors(data, error_rate_percent):
     corrupted = bytearray(data)
     num_bits = len(data) * 8
     num_errors = int((error_rate_percent / 100.0) * num_bits)
+    
+    add_osi_log("Data Link Layer", "--- Bit Error Simulation Started ---")
+    add_osi_log("Data Link Layer", f"Original Data Length: {len(data)} bytes ({num_bits} bits)")
+    add_osi_log("Data Link Layer", f"Target Error Rate: {error_rate_percent}%")
+    add_osi_log("Data Link Layer", f"Number of bits to flip: {num_errors}")
+
+    flipped_bits = 0
     for _ in range(num_errors):
         bit_index = random.randint(0, num_bits - 1)
         byte_index = bit_index // 8
         bit_in_byte = bit_index % 8
+        
+        original_byte = corrupted[byte_index]
         corrupted[byte_index] ^= 1 << bit_in_byte
+        flipped_bits += 1
+        add_osi_log("Data Link Layer", f"Flipped bit at global index {bit_index} (Byte {byte_index}, Bit {bit_in_byte}). Original byte: 0x{original_byte:02X}, New byte: 0x{corrupted[byte_index]:02X}")
+    
+    add_osi_log("Data Link Layer", f"Total bits flipped: {flipped_bits}")
+    add_osi_log("Data Link Layer", "--- Bit Error Simulation Finished ---")
     return bytes(corrupted)
 
 # ========================
@@ -98,6 +143,11 @@ def simulate_tcp_on_data(total_packets, ssthresh_init, loss_packets, variant="Ta
     time_series, cwnd_series, ssthresh_series = [], [], []
     ack_series, state_series, transitions = [], [], []
 
+    add_osi_log("Transport Layer", "--- TCP Congestion Control Simulation Started ---")
+    add_osi_log("Transport Layer", f"Initial CWND: {cwnd}, Initial SSTHRESH: {ssthresh_init}, TCP Variant: {variant}")
+    add_osi_log("Transport Layer", f"Total Packets to simulate: {total_packets}")
+    add_osi_log("Transport Layer", f"Pre-defined Loss Packets: {loss_packets}")
+
     time_step = 0
     i = 0
     while i < total_packets:
@@ -108,21 +158,26 @@ def simulate_tcp_on_data(total_packets, ssthresh_init, loss_packets, variant="Ta
         transitions.append((time_step, cwnd))
         ack_series.append(i)
 
+        log_message = f"Time: {time_step}, CWND: {cwnd}, SSTHRESH: {int(ssthresh)}, State: {state}"
+
         if i in loss_packets:
             ssthresh = max(cwnd / 2, 1)
             cwnd = 1 if variant == "Tahoe" else max(1, ssthresh)
             state = "Slow Start"
+            add_osi_log("Transport Layer", f"{log_message} -> Packet {i} LOST. New SSTHRESH: {int(ssthresh)}, New CWND: {cwnd}, State: {state}")
         else:
             if state == "Slow Start":
                 cwnd *= 2
                 if cwnd >= ssthresh:
                     state = "Congestion Avoidance"
+                add_osi_log("Transport Layer", f"{log_message} -> Packet {i} ACKED. Slow Start. New CWND: {cwnd}, State: {state}")
             elif state == "Congestion Avoidance":
                 cwnd += 1
+                add_osi_log("Transport Layer", f"{log_message} -> Packet {i} ACKED. Congestion Avoidance. New CWND: {cwnd}")
 
         i += 1
         time_step += 1
-
+    add_osi_log("Transport Layer", "--- TCP Congestion Control Simulation Finished ---")
     return time_series, cwnd_series, ssthresh_series, ack_series, state_series, transitions
 
 # ========================
@@ -148,16 +203,20 @@ def plot_graphs(time_series, cwnd_series, ssthresh_series, ack_series, transitio
         ax[1].grid(True)
 
         chart_placeholder.pyplot(fig)
-        time.sleep(0.2)
+        plt.close(fig) # Close the figure to prevent memory issues
+        time.sleep(0.05) # Reduced sleep for faster animation
 
 # ========================
 # RIP Routing + Shortest Path
 # ========================
 def plot_rip_graph(rip_table, source=None, target=None):
     G = nx.DiGraph()
+    add_osi_log("Network Layer", "--- RIP Routing Graph Generation Started ---")
+    add_osi_log("Network Layer", "Building graph from RIP table entries:")
     for entry in rip_table:
         src, dst, weight = entry["node"], entry["dest"], entry["distance"]
         G.add_edge(src, dst, weight=weight)
+        add_osi_log("Network Layer", f"  Added edge: Node {src} -> Node {dst} (Cost: {weight})")
 
     pos = nx.spring_layout(G, seed=42)
     labels = nx.get_edge_attributes(G, "weight")
@@ -175,14 +234,16 @@ def plot_rip_graph(rip_table, source=None, target=None):
     nx.draw_networkx_edge_labels(G, pos, edge_labels=labels, font_size=10, ax=ax)
     
     if source is not None and target is not None:
+        add_osi_log("Network Layer", f"Calculating shortest path from Node {source} to Node {target} using Dijkstra\"s algorithm.")
         try:
             path = nx.dijkstra_path(G, source=source, target=target, weight="weight")
             path_edges = list(zip(path, path[1:]))
-            
-            # Calculate total distance
             total_distance = nx.dijkstra_path_length(G, source=source, target=target, weight="weight")
             
-            # Highlight shortest path edges with animated effect
+            add_osi_log("Network Layer", f"Shortest Path Found: {" -> ".join(map(str, path))} (Total Cost: {total_distance})")
+            add_osi_log("Network Layer", "Highlighting path on graph.")
+
+            # Highlight shortest path edges with a distinct color, thicker line, and solid style
             nx.draw_networkx_edges(G, pos, edgelist=path_edges, edge_color="red", width=5, style="solid", ax=ax)
             
             # Highlight nodes in the shortest path with different colors
@@ -195,28 +256,32 @@ def plot_rip_graph(rip_table, source=None, target=None):
             nx.draw_networkx_nodes(G, pos, nodelist=intermediate_nodes, node_color="yellow", node_size=1100, ax=ax)
             
             # Add title with path information
-            ax.set_title(f"RIP Routing Topology\nShortest Path: {' → '.join(map(str, path))}\nTotal Distance: {total_distance}", 
+            ax.set_title(f"RIP Routing Topology\nShortest Path: {" → ".join(map(str, path))}\nTotal Distance: {total_distance}", 
                         fontsize=14, fontweight="bold")
             
             # Add legend
             legend_elements = [
-                plt.Line2D([0], [0], marker='o', color='w', markerfacecolor='green', markersize=10, label='Source Node'),
-                plt.Line2D([0], [0], marker='o', color='w', markerfacecolor='red', markersize=10, label='Target Node'),
-                plt.Line2D([0], [0], marker='o', color='w', markerfacecolor='yellow', markersize=10, label='Intermediate Node'),
-                plt.Line2D([0], [0], color='red', linewidth=3, label='Shortest Path')
+                plt.Line2D([0], [0], marker=\'o\', color=\'w\', markerfacecolor=\'green\', markersize=10, label=\'Source Node\'),
+                plt.Line2D([0], [0], marker=\'o\', color=\'w\', markerfacecolor=\'red\', markersize=10, label=\'Target Node\'),
+                plt.Line2D([0], [0], marker=\'o\', color=\'w\', markerfacecolor=\'yellow\', markersize=10, label=\'Intermediate Node\'),
+                plt.Line2D([0], [0], color=\'red\', linewidth=3, label=\'Shortest Path\')
             ]
-            ax.legend(handles=legend_elements, loc='upper right')
+            ax.legend(handles=legend_elements, loc=\'upper right\')
             
-            st.success(f"🔀 Shortest path from {source} to {target}: {' → '.join(map(str, path))} (Distance: {total_distance})")
+            st.success(f"🔀 Shortest path from {source} to {target}: {" → ".join(map(str, path))} (Distance: {total_distance})")
             
         except nx.NetworkXNoPath:
+            add_osi_log("Network Layer", f"No path found from Node {source} to Node {target}.")
             ax.set_title("RIP Routing Topology", fontsize=14, fontweight="bold")
             st.error(f"❌ No path from {source} to {target}")
     else:
+        add_osi_log("Network Layer", "No source or target specified for shortest path calculation.")
         ax.set_title("RIP Routing Topology", fontsize=14, fontweight="bold")
     
-    ax.axis('off')
+    ax.axis(\'off\')
     st.pyplot(fig)
+    plt.close(fig) # Close the figure to prevent memory issues
+    add_osi_log("Network Layer", "--- RIP Routing Graph Generation Finished ---")
 
 # ========================
 # OSI Layer Details
@@ -242,7 +307,8 @@ def display_osi_stack():
                 "AES Encryption/Decryption (aes_encrypt_visual, aes_decrypt)",
                 "Character Stuffing/Unstuffing (character_stuff, character_unstuff)"
             ],
-            "data_flow": "Receives user data from the Application Layer. Encrypts and stuffs the data, then passes the formatted data to the Session Layer."
+            "data_flow": "Receives user data from the Application Layer. Encrypts and stuffs the data, then passes the formatted data to the Session Layer.",
+            "log_key": "Presentation Layer"
         },
         "5. Session Layer": {
             "description": "Establishes, manages, and terminates communication sessions between applications. Handles dialogue control and synchronization.",
@@ -260,17 +326,19 @@ def display_osi_stack():
                 "CWND and SSTHRESH management",
                 "Graph plotting of TCP evolution (plot_graphs)"
             ],
-            "data_flow": "Receives data from the Session Layer. Segments the data into packets (implicitly, as the simulation deals with total packets) and applies TCP congestion control logic. Passes segments/packets to the Network Layer."
+            "data_flow": "Receives data from the Session Layer. Segments the data into packets (implicitly, as the simulation deals with total packets) and applies TCP congestion control logic. Passes segments/packets to the Network Layer.",
+            "log_key": "Transport Layer"
         },
         "3. Network Layer": {
             "description": "Responsible for logical addressing and routing of data packets across different networks. It determines the best path for data delivery.",
             "data_unit": "Packets",
             "functions": [
                 "RIP Routing (plot_rip_graph)",
-                "Dijkstra's algorithm for shortest path (nx.dijkstra_path)",
+                "Dijkstra\"s algorithm for shortest path (nx.dijkstra_path)",
                 "Graph visualization of network topology"
             ],
-            "data_flow": "Receives segments/packets from the Transport Layer. Determines the optimal route for these packets using RIP and Dijkstra's algorithm. Passes packets to the Data Link Layer."
+            "data_flow": "Receives segments/packets from the Transport Layer. Determines the optimal route for these packets using RIP and Dijkstra\"s algorithm. Passes packets to the Data Link Layer.",
+            "log_key": "Network Layer"
         },
         "2. Data Link Layer": {
             "description": "Provides reliable data transfer across a physical link. It handles framing, physical addressing (MAC addresses), error detection, and flow control within a local network segment.",
@@ -278,7 +346,8 @@ def display_osi_stack():
             "functions": [
                 "Bit Error Simulation (simulate_bit_errors)"
             ],
-            "data_flow": "Receives packets from the Network Layer. Simulates bit errors that might occur during transmission. Passes frames (with potential errors) to the Physical Layer."
+            "data_flow": "Receives packets from the Network Layer. Simulates bit errors that might occur during transmission. Passes frames (with potential errors) to the Physical Layer.",
+            "log_key": "Data Link Layer"
         },
         "1. Physical Layer": {
             "description": "Defines the physical characteristics of the network, including cabling, connectors, and electrical signals. It deals with the raw bit stream transmission.",
@@ -286,17 +355,25 @@ def display_osi_stack():
             "functions": [
                 "Implicit simulation of physical medium characteristics (packet_size, error_rate)"
             ],
-            "data_flow": "Receives frames from the Data Link Layer. Converts them into raw bit streams for transmission over the simulated physical medium. The `error_rate` directly influences the integrity of these bits."
+            "data_flow": "Receives frames from the Data Link Layer. Converts them into raw bit streams for transmission over the simulated physical medium. The `error_rate` directly influences the integrity of these bits.",
+            "log_key": "Physical Layer"
         }
     }
 
     for layer_name, details in osi_layers_details.items():
-        with st.expander(f"**{layer_name}** - {details['data_unit']}"):
-            st.write(f"**Description:** {details['description']}")
+        with st.expander(f"**{layer_name}** - {details["data_unit"]}"):
+            st.write(f"**Description:** {details["description"]}")
             st.write(f"**Key Functions in Script:**")
-            for func in details['functions']:
+            for func in details["functions"]:
                 st.markdown(f"- {func}")
-            st.write(f"**Data Flow:** {details['data_flow']}")
+            st.write(f"**Data Flow:** {details["data_flow"]}")
+            
+            if "log_key" in details and osi_logs[details["log_key"]]:
+                st.subheader("Real-time Log:")
+                for log_entry in osi_logs[details["log_key"]]:
+                    st.code(log_entry, language="text")
+            elif "log_key" in details:
+                st.info(f"No real-time logs available for {details["log_key"]}. Run the simulation to generate logs.")
 
 # ========================
 # Main Streamlit App
@@ -338,11 +415,11 @@ def main():
             for j in range(num_routes):
                 col1, col2, col3 = st.columns(3)
                 with col1:
-                    dest = st.number_input("Destination", key=f"d_{i}_{j}")
+                    dest = st.number_input("Destination", min_value=0, value=0, key=f"d_{i}_{j}")
                 with col2:
-                    next_hop = st.number_input("Next Hop", key=f"h_{i}_{j}")
+                    next_hop = st.number_input("Next Hop", min_value=0, value=0, key=f"h_{i}_{j}")
                 with col3:
-                    distance = st.number_input("Distance", key=f"dist_{i}_{j}")
+                    distance = st.number_input("Distance", min_value=1, value=1, key=f"dist_{i}_{j}")
                 rip_table.append({"node": i, "dest": dest, "next_hop": next_hop, "distance": distance})
 
     # Display RIP table
@@ -382,9 +459,17 @@ def main():
     
     if st.button("🚀 Run Full Network Simulation", type="primary"):
         
+        # Clear previous logs
+        for layer in osi_logs:
+            osi_logs[layer].clear()
+
         # Calculate loss packets
         loss_packets = sorted(random.sample(range((len(data)+packet_size-1)//packet_size), int((loss_rate / 100) * ((len(data)+packet_size-1)//packet_size))))
-        
+        add_osi_log("Physical Layer", f"Configured Bit Error Rate: {error_rate}%")
+        add_osi_log("Physical Layer", f"Configured Packet Loss Rate: {loss_rate}%")
+        add_osi_log("Physical Layer", f"Total Packets to be sent: {(len(data)+packet_size-1)//packet_size}")
+        add_osi_log("Physical Layer", f"Simulated Lost Packets (indices): {loss_packets}")
+
         # Encryption and stuffing
         key = b"thisisasecretkey"
         encrypted_data = aes_encrypt_visual(data, key)
