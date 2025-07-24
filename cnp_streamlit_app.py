@@ -319,7 +319,7 @@ def plot_rip_graph(rip_table, source=None, target=None):
         add_osi_log("Network Layer", "No source or target specified for shortest path calculation.")
         ax.set_title("RIP Routing Topology", fontsize=14, fontweight="bold")
     
-    ax.axis(\'off\')
+    ax.axis('off')
     st.pyplot(fig)
     plt.close(fig) # Close the figure to prevent memory issues
     add_osi_log("Network Layer", "--- RIP Routing Graph Generation Finished ---")
