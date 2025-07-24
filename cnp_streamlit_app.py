@@ -418,23 +418,27 @@ def display_osi_stack():
 
     # Export OSI Logs to Excel
     st.subheader("📊 Export OSI Logs")
-     # Added a button for clarity
-    excel_buffer = io.BytesIO()
-    with pd.ExcelWriter(excel_buffer, engine='xlsxwriter') as writer:
-        for layer, logs in osi_logs.items():
-             if logs:
-                df_log = pd.DataFrame({"Log Entry": logs})
-                df_log.to_excel(writer, sheet_name=layer, index=False)
+    has_logs = any(logs for logs in osi_logs.values())  # Check if any logs exist
+    if has_logs:
+        excel_buffer = io.BytesIO()
+        with pd.ExcelWriter(excel_buffer, engine='xlsxwriter') as writer:
+            for layer, logs in osi_logs.items():
+                if logs:  # Only write non-empty logs
+                    # Sanitize sheet name (Excel sheet names have restrictions)
+                    safe_sheet_name = layer.replace(" Layer", "").replace(".", "").strip()[:31]  # Truncate to 31 chars
+                    df_log = pd.DataFrame({"Log Entry": logs})
+                    df_log.to_excel(writer, sheet_name=safe_sheet_name, index=False)
+            writer.close()  # Explicitly close the writer to ensure the file is finalized
         excel_buffer.seek(0)
         st.download_button(
             label="Download OSI Logs",
             data=excel_buffer,
             file_name="osi_logs.xlsx",
-            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            key="download_osi_logs"  # Unique key for the button
         )
-    # Export OSI Logs to Excel
-    st.subheader("📊 Export OSI Logs")
-
+    else:
+        st.warning("No logs available to export. Please run the simulation first.")
 
 # ========================
 # Main Streamlit App
