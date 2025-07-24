@@ -170,7 +170,14 @@ def plot_rip_graph(rip_table, source=None, target=None):
         try:
             path = nx.dijkstra_path(G, source=source, target=target, weight="weight")
             path_edges = list(zip(path, path[1:]))
-            nx.draw_networkx_edges(G, pos, edgelist=path_edges, edge_color="r", width=3, ax=ax)
+            
+            # Highlight shortest path edges with a distinct color, thicker line, and dashed style
+            nx.draw_networkx_edges(G, pos, edgelist=path_edges, edge_color="lime", width=4, style="dashed", ax=ax)
+            
+            # Highlight nodes in the shortest path
+            path_nodes = path
+            nx.draw_networkx_nodes(G, pos, nodelist=path_nodes, node_color="lightgreen", node_size=900, ax=ax)
+            
             st.success(f"🔀 Shortest path from {source} to {target}: {path}")
         except nx.NetworkXNoPath:
             st.error(f"❌ No path from {source} to {target}")
@@ -226,10 +233,10 @@ def display_osi_stack():
             "data_unit": "Packets",
             "functions": [
                 "RIP Routing (plot_rip_graph)",
-                "Dijkstra's algorithm for shortest path (nx.dijkstra_path)",
+                "Dijkstra\'s algorithm for shortest path (nx.dijkstra_path)",
                 "Graph visualization of network topology"
             ],
-            "data_flow": "Receives segments/packets from the Transport Layer. Determines the optimal route for these packets using RIP and Dijkstra's algorithm. Passes packets to the Data Link Layer."
+            "data_flow": "Receives segments/packets from the Transport Layer. Determines the optimal route for these packets using RIP and Dijkstra\'s algorithm. Passes packets to the Data Link Layer."
         },
         "2. Data Link Layer": {
             "description": "Provides reliable data transfer across a physical link. It handles framing, physical addressing (MAC addresses), error detection, and flow control within a local network segment.",
@@ -297,19 +304,13 @@ def main():
     st.write(f"Lost Packets: {loss_packets}")
 
     st.subheader("📡 RIP Routing Table")
-    rip_table = []
-    for i in range(num_nodes):
-        st.markdown(f"**Node {i}** Routing")
-        num_routes = st.number_input(f"Routes for Node {i}", min_value=1, max_value=5, value=2, key=f"r{i}")
-        for j in range(num_routes):
-            col1, col2, col3 = st.columns(3)
-            with col1:
-                dest = st.number_input("Dest", key=f"d_{i}_{j}")
-            with col2:
-                next_hop = st.number_input("Next Hop", key=f"h_{i}_{j}")
-            with col3:
-                distance = st.number_input("Distance", key=f"dist_{i}_{j}")
-            rip_table.append({"node": i, "dest": dest, "next_hop": next_hop, "distance": distance})
+    # Display RIP table using st.dataframe for better presentation
+    if rip_table:
+        import pandas as pd
+        df_rip = pd.DataFrame(rip_table)
+        st.dataframe(df_rip)
+    else:
+        st.info("No RIP entries defined yet. Please add routes above.")
 
     source = st.number_input("From Node", min_value=0, value=0)
     target = st.number_input("To Node", min_value=0, value=1)
