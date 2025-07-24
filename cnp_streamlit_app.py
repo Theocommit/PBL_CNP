@@ -420,7 +420,7 @@ def display_osi_stack():
     st.subheader("📊 Export OSI Logs")
     if st.button("Download OSI Logs as Excel"): # Added a button for clarity
         excel_buffer = io.BytesIO()
-        with pd.ExcelWriter(excel_buffer, engine=\'xlsxwriter\') as writer:
+        with pd.ExcelWriter(excel_buffer, engine='xlsxwriter') as writer:
             for layer, logs in osi_logs.items():
                 if logs:
                     df_log = pd.DataFrame({"Log Entry": logs})
