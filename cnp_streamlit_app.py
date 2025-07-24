@@ -418,13 +418,13 @@ def display_osi_stack():
 
     # Export OSI Logs to Excel
     st.subheader("📊 Export OSI Logs")
-    if st.button("Download OSI Logs as Excel"): # Added a button for clarity
-        excel_buffer = io.BytesIO()
-        with pd.ExcelWriter(excel_buffer, engine='xlsxwriter') as writer:
-            for layer, logs in osi_logs.items():
-                if logs:
-                    df_log = pd.DataFrame({"Log Entry": logs})
-                    df_log.to_excel(writer, sheet_name=layer, index=False)
+     # Added a button for clarity
+    excel_buffer = io.BytesIO()
+    with pd.ExcelWriter(excel_buffer, engine='xlsxwriter') as writer:
+        for layer, logs in osi_logs.items():
+             if logs:
+                df_log = pd.DataFrame({"Log Entry": logs})
+                df_log.to_excel(writer, sheet_name=layer, index=False)
         excel_buffer.seek(0)
         st.download_button(
             label="Download OSI Logs",
@@ -432,6 +432,9 @@ def display_osi_stack():
             file_name="osi_logs.xlsx",
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
         )
+    # Export OSI Logs to Excel
+   st.subheader("📊 Export OSI Logs")
+
 
 # ========================
 # Main Streamlit App
