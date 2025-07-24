@@ -6,6 +6,7 @@ import random
 import streamlit as st
 import tempfile
 import time
+import pandas as pd
 
 # =========================
 # AES Encryption w/ Formula
@@ -161,27 +162,60 @@ def plot_rip_graph(rip_table, source=None, target=None):
     pos = nx.spring_layout(G, seed=42)
     labels = nx.get_edge_attributes(G, "weight")
 
-    fig, ax = plt.subplots(figsize=(8, 6))
-    nx.draw(G, pos, with_labels=True, node_color="lightblue", node_size=800, font_size=12, ax=ax)
-    nx.draw_networkx_edge_labels(G, pos, edge_labels=labels, ax=ax)
-    ax.set_title("RIP Routing Topology")
+    fig, ax = plt.subplots(figsize=(10, 8))
+    
+    # Draw all edges first
+    nx.draw_networkx_edges(G, pos, edge_color="gray", width=1, ax=ax)
+    
+    # Draw all nodes
+    nx.draw_networkx_nodes(G, pos, node_color="lightblue", node_size=1000, ax=ax)
+    
+    # Draw labels
+    nx.draw_networkx_labels(G, pos, font_size=14, font_weight="bold", ax=ax)
+    nx.draw_networkx_edge_labels(G, pos, edge_labels=labels, font_size=10, ax=ax)
     
     if source is not None and target is not None:
         try:
             path = nx.dijkstra_path(G, source=source, target=target, weight="weight")
             path_edges = list(zip(path, path[1:]))
             
-            # Highlight shortest path edges with a distinct color, thicker line, and dashed style
-            nx.draw_networkx_edges(G, pos, edgelist=path_edges, edge_color="lime", width=4, style="dashed", ax=ax)
+            # Calculate total distance
+            total_distance = nx.dijkstra_path_length(G, source=source, target=target, weight="weight")
             
-            # Highlight nodes in the shortest path
-            path_nodes = path
-            nx.draw_networkx_nodes(G, pos, nodelist=path_nodes, node_color="lightgreen", node_size=900, ax=ax)
+            # Highlight shortest path edges with animated effect
+            nx.draw_networkx_edges(G, pos, edgelist=path_edges, edge_color="red", width=5, style="solid", ax=ax)
             
-            st.success(f"🔀 Shortest path from {source} to {target}: {path}")
+            # Highlight nodes in the shortest path with different colors
+            source_node = [source]
+            target_node = [target]
+            intermediate_nodes = [node for node in path if node != source and node != target]
+            
+            nx.draw_networkx_nodes(G, pos, nodelist=source_node, node_color="green", node_size=1200, ax=ax)
+            nx.draw_networkx_nodes(G, pos, nodelist=target_node, node_color="red", node_size=1200, ax=ax)
+            nx.draw_networkx_nodes(G, pos, nodelist=intermediate_nodes, node_color="yellow", node_size=1100, ax=ax)
+            
+            # Add title with path information
+            ax.set_title(f"RIP Routing Topology\nShortest Path: {' → '.join(map(str, path))}\nTotal Distance: {total_distance}", 
+                        fontsize=14, fontweight="bold")
+            
+            # Add legend
+            legend_elements = [
+                plt.Line2D([0], [0], marker='o', color='w', markerfacecolor='green', markersize=10, label='Source Node'),
+                plt.Line2D([0], [0], marker='o', color='w', markerfacecolor='red', markersize=10, label='Target Node'),
+                plt.Line2D([0], [0], marker='o', color='w', markerfacecolor='yellow', markersize=10, label='Intermediate Node'),
+                plt.Line2D([0], [0], color='red', linewidth=3, label='Shortest Path')
+            ]
+            ax.legend(handles=legend_elements, loc='upper right')
+            
+            st.success(f"🔀 Shortest path from {source} to {target}: {' → '.join(map(str, path))} (Distance: {total_distance})")
+            
         except nx.NetworkXNoPath:
+            ax.set_title("RIP Routing Topology", fontsize=14, fontweight="bold")
             st.error(f"❌ No path from {source} to {target}")
+    else:
+        ax.set_title("RIP Routing Topology", fontsize=14, fontweight="bold")
     
+    ax.axis('off')
     st.pyplot(fig)
 
 # ========================
@@ -233,10 +267,10 @@ def display_osi_stack():
             "data_unit": "Packets",
             "functions": [
                 "RIP Routing (plot_rip_graph)",
-                "Dijkstra\'s algorithm for shortest path (nx.dijkstra_path)",
+                "Dijkstra's algorithm for shortest path (nx.dijkstra_path)",
                 "Graph visualization of network topology"
             ],
-            "data_flow": "Receives segments/packets from the Transport Layer. Determines the optimal route for these packets using RIP and Dijkstra\'s algorithm. Passes packets to the Data Link Layer."
+            "data_flow": "Receives segments/packets from the Transport Layer. Determines the optimal route for these packets using RIP and Dijkstra's algorithm. Passes packets to the Data Link Layer."
         },
         "2. Data Link Layer": {
             "description": "Provides reliable data transfer across a physical link. It handles framing, physical addressing (MAC addresses), error detection, and flow control within a local network segment.",
@@ -269,6 +303,11 @@ def display_osi_stack():
 # ========================
 def main():
     st.title("🚀 Network Simulation with AES, Stuffing, RIP and TCP")
+    
+    # ========================
+    # SECTION 1: Data Input
+    # ========================
+    st.header("📄 1. Data Input")
     uploaded_file = st.file_uploader("📂 Upload input text file", type=["txt"])
     if not uploaded_file:
         st.warning("Please upload a .txt file to begin.")
@@ -277,63 +316,122 @@ def main():
     data = uploaded_file.read().strip()
     st.text_area("📄 Input Data", data.decode(), height=150)
 
-    packet_size = st.number_input("📦 MSS (Max Segment Size)", min_value=1, value=64)
-    ssthresh_init = st.number_input("🔧 Initial SSTHRESH", min_value=1, value=8)
-    variant = st.selectbox("⚙️ TCP Variant", ["Tahoe", "Reno"])
-    num_nodes = st.number_input("🧝 Number of RIP Nodes", min_value=1, value=3)
-    error_rate = st.slider("💥 Bit Error Rate (%)", 0, 100, 0)
-    loss_rate = st.slider("📉 Packet Loss Rate (%)", 0, 100, 20)
+    # ========================
+    # SECTION 2: Network Configuration
+    # ========================
+    st.header("🌐 2. Network Configuration")
+    
+    col1, col2 = st.columns(2)
+    with col1:
+        num_nodes = st.number_input("🧝 Number of RIP Nodes", min_value=1, value=3)
+        error_rate = st.slider("💥 Bit Error Rate (%)", 0, 100, 0)
+    with col2:
+        packet_size = st.number_input("📦 MSS (Max Segment Size)", min_value=1, value=64)
+        loss_rate = st.slider("📉 Packet Loss Rate (%)", 0, 100, 20)
 
-    loss_packets = sorted(random.sample(range((len(data)+packet_size-1)//packet_size), int((loss_rate / 100) * ((len(data)+packet_size-1)//packet_size))))
+    # RIP Routing Table Configuration
+    st.subheader("📡 RIP Routing Table Configuration")
+    rip_table = []
+    for i in range(num_nodes):
+        with st.expander(f"**Node {i}** Routing Configuration"):
+            num_routes = st.number_input(f"Routes for Node {i}", min_value=1, max_value=5, value=2, key=f"r{i}")
+            for j in range(num_routes):
+                col1, col2, col3 = st.columns(3)
+                with col1:
+                    dest = st.number_input("Destination", key=f"d_{i}_{j}")
+                with col2:
+                    next_hop = st.number_input("Next Hop", key=f"h_{i}_{j}")
+                with col3:
+                    distance = st.number_input("Distance", key=f"dist_{i}_{j}")
+                rip_table.append({"node": i, "dest": dest, "next_hop": next_hop, "distance": distance})
 
-    key = b"thisisasecretkey"
-    encrypted_data = aes_encrypt_visual(data, key)
-    stuffed_data = character_stuff(encrypted_data)
-
-    if error_rate > 0:
-        stuffed_data = simulate_bit_errors(stuffed_data, error_rate)
-
-    total_packets = (len(stuffed_data) + packet_size - 1) // packet_size
-
-    st.subheader("🔐 Encryption & Stuffing Output")
-    st.write(f"Encrypted Data Length: {len(encrypted_data)} bytes")
-    st.code(encrypted_data.hex())
-    st.write(f"Stuffed Data Length: {len(stuffed_data)} bytes")
-    st.code(stuffed_data.hex())
-    st.write(f"Total Packets: {total_packets}")
-    st.write(f"Lost Packets: {loss_packets}")
-
-    st.subheader("📡 RIP Routing Table")
-    # Display RIP table using st.dataframe for better presentation
+    # Display RIP table
     if rip_table:
-        import pandas as pd
+        st.subheader("📊 Current RIP Routing Table")
         df_rip = pd.DataFrame(rip_table)
-        st.dataframe(df_rip)
+        st.dataframe(df_rip, use_container_width=True)
     else:
-        st.info("No RIP entries defined yet. Please add routes above.")
+        st.info("No RIP entries defined yet.")
 
-    source = st.number_input("From Node", min_value=0, value=0)
-    target = st.number_input("To Node", min_value=0, value=1)
+    # ========================
+    # SECTION 3: Transport Layer Configuration
+    # ========================
+    st.header("🚛 3. Transport Layer Configuration")
+    
+    col1, col2 = st.columns(2)
+    with col1:
+        ssthresh_init = st.number_input("🔧 Initial SSTHRESH", min_value=1, value=8)
+    with col2:
+        variant = st.selectbox("⚙️ TCP Variant", ["Tahoe", "Reno"])
 
-    if st.button("🚀 Run Full Simulation"):
+    # ========================
+    # SECTION 4: Path Selection
+    # ========================
+    st.header("🎯 4. Path Selection")
+    
+    col1, col2 = st.columns(2)
+    with col1:
+        source = st.number_input("From Node", min_value=0, value=0)
+    with col2:
+        target = st.number_input("To Node", min_value=0, value=1)
+
+    # ========================
+    # SECTION 5: Run Simulation
+    # ========================
+    st.header("🚀 5. Run Simulation")
+    
+    if st.button("🚀 Run Full Network Simulation", type="primary"):
         
+        # Calculate loss packets
+        loss_packets = sorted(random.sample(range((len(data)+packet_size-1)//packet_size), int((loss_rate / 100) * ((len(data)+packet_size-1)//packet_size))))
+        
+        # Encryption and stuffing
+        key = b"thisisasecretkey"
+        encrypted_data = aes_encrypt_visual(data, key)
+        stuffed_data = character_stuff(encrypted_data)
+
+        if error_rate > 0:
+            stuffed_data = simulate_bit_errors(stuffed_data, error_rate)
+
+        total_packets = (len(stuffed_data) + packet_size - 1) // packet_size
+
+        st.subheader("🔐 Encryption & Stuffing Output")
+        col1, col2 = st.columns(2)
+        with col1:
+            st.write(f"**Encrypted Data Length:** {len(encrypted_data)} bytes")
+            st.code(encrypted_data.hex()[:200] + "..." if len(encrypted_data.hex()) > 200 else encrypted_data.hex())
+        with col2:
+            st.write(f"**Stuffed Data Length:** {len(stuffed_data)} bytes")
+            st.code(stuffed_data.hex()[:200] + "..." if len(stuffed_data.hex()) > 200 else stuffed_data.hex())
+        
+        st.write(f"**Total Packets:** {total_packets}")
+        st.write(f"**Lost Packets:** {loss_packets}")
+
+        # TCP Simulation
         time_series, cwnd_series, ssthresh_series, ack_series, state_series, transitions = simulate_tcp_on_data(
             total_packets, ssthresh_init, loss_packets, variant)
 
-        st.subheader("📈 CWND vs Time Graphs")
+        st.subheader("📈 TCP CWND Evolution")
         plot_graphs(time_series, cwnd_series, ssthresh_series, ack_series, transitions)
 
-        st.subheader("🌐 RIP Network Graph with Shortest Path Highlighted")
+        st.subheader("🌐 RIP Network Graph with Shortest Path")
         plot_rip_graph(rip_table, source, target)
 
         # Display OSI Log
         display_osi_stack()
 
         st.subheader("📋 TCP Event Log")
-        st.text(f"{"Time":<10}{"CWND":<10}{"SSTHRESH":<10}{"State":<20}")
-        st.text("-"*50)
+        event_data = []
         for t, c, ssth, state in zip(time_series, cwnd_series, ssthresh_series, state_series):
-            st.text(f"{t:<10.2f}{c:<10.2f}{int(ssth):<10}{state:<20}")
+            event_data.append({
+                "Time": f"{t:.2f}",
+                "CWND": f"{c:.2f}",
+                "SSTHRESH": int(ssth),
+                "State": state
+            })
+        
+        df_events = pd.DataFrame(event_data)
+        st.dataframe(df_events, use_container_width=True)
 
         st.subheader("📤 Receiver Output")
         try:
@@ -352,33 +450,35 @@ def main():
         # ===========================
         total_chunks_sent = total_packets
         successfully_delivered = total_chunks_sent - len(loss_packets)
-        lost_packets = len(loss_packets)
+        lost_packets_count = len(loss_packets)
         avg_latency_per_packet = len(time_series) / total_chunks_sent
         pdr = (successfully_delivered / total_chunks_sent) * 100
-        packet_loss_rate = (lost_packets / total_chunks_sent) * 100
+        packet_loss_rate = (lost_packets_count / total_chunks_sent) * 100
 
         st.subheader("📊 Simulation Results")
-        st.markdown(f"""
-        - ✅ **Total Chunks Sent**: {total_chunks_sent}  
-        - 📅 **Successfully Delivered**: {successfully_delivered}  
-        - ❌ **Lost Packets**: {lost_packets}  
-        - ⏱️ **Average Latency per Packet**: {avg_latency_per_packet:.3f} sec  
-        - 📦 **Packet Delivery Ratio (PDR)**: {pdr:.2f}%  
-        - 📉 **Packet Loss Rate**: {packet_loss_rate:.2f}%  
-        """)
+        
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            st.metric("Total Chunks Sent", total_chunks_sent)
+            st.metric("Successfully Delivered", successfully_delivered)
+        with col2:
+            st.metric("Lost Packets", lost_packets_count)
+            st.metric("Packet Delivery Ratio", f"{pdr:.2f}%")
+        with col3:
+            st.metric("Packet Loss Rate", f"{packet_loss_rate:.2f}%")
+            st.metric("Avg Latency/Packet", f"{avg_latency_per_packet:.3f} sec")
 
-        st.markdown("### 🔐 Encryption/Decryption Overhead (AES)")
-        st.markdown(f"""
-        - **Sender Side**:  
-            - Total: `{encryption_time:.4f}` sec  
-            - Avg per chunk: `{(encryption_time/total_chunks_sent):.4f}` sec  
-
-        - **Receiver Side**:  
-            - Total: `{decryption_time:.4f}` sec  
-            - Avg per chunk: `{(decryption_time/successfully_delivered):.4f}` sec  
-        """)
+        st.subheader("🔐 Encryption/Decryption Overhead")
+        col1, col2 = st.columns(2)
+        with col1:
+            st.write("**Sender Side:**")
+            st.write(f"- Total: `{encryption_time:.4f}` sec")
+            st.write(f"- Avg per chunk: `{(encryption_time/total_chunks_sent):.4f}` sec")
+        with col2:
+            st.write("**Receiver Side:**")
+            st.write(f"- Total: `{decryption_time:.4f}` sec")
+            st.write(f"- Avg per chunk: `{(decryption_time/successfully_delivered):.4f}` sec")
 
 if __name__ == "__main__":
     main()
-
 
