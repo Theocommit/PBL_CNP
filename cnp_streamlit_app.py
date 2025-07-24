@@ -7,10 +7,13 @@ import streamlit as st
 import tempfile
 import time
 import pandas as pd
+import io
 
 # Global list to store OSI layer logs
 osi_logs = {
+    "Application Layer": [],
     "Presentation Layer": [],
+    "Session Layer": [],
     "Transport Layer": [],
     "Network Layer": [],
     "Data Link Layer": [],
@@ -18,21 +21,36 @@ osi_logs = {
 }
 
 def add_osi_log(layer, message):
-    osi_logs[layer].append(message)
+    if layer in osi_logs:
+        osi_logs[layer].append(message)
+    else:
+        st.warning(f"Attempted to log to unknown OSI layer: {layer}")
 
 # =========================
 # AES Encryption w/ Formula
 # =========================
 def aes_encrypt_visual(data, key):
     pad_len = 16 - (len(data) % 16)
-    data += bytes([pad_len]) * pad_len
+    data_padded = data + bytes([pad_len]) * pad_len
     cipher = AES.new(key, AES.MODE_ECB)
-    blocks = [data[i:i+16] for i in range(0, len(data), 16)]
+    blocks = [data_padded[i:i+16] for i in range(0, len(data_padded), 16)]
     encrypted_blocks = []
 
     add_osi_log("Presentation Layer", "--- AES Encryption Started ---")
-    add_osi_log("Presentation Layer", f"Original Data Length: {len(data) - pad_len} bytes")
-    add_osi_log("Presentation Layer", f"Padded Data Length: {len(data)} bytes (PKCS#7 padding)")
+    add_osi_log("Presentation Layer", f"Original Data Length: {len(data)} bytes")
+    add_osi_log("Presentation Layer", f"Padded Data Length: {len(data_padded)} bytes (PKCS#7 padding with {pad_len} bytes)")
+
+    # Detailed log for the first block
+    if len(blocks) > 0:
+        first_block = blocks[0]
+        add_osi_log("Presentation Layer", "\n--- Detailed Encryption for First Block ---")
+        add_osi_log("Presentation Layer", f"First Block (Hex): {first_block.hex()}")
+        add_osi_log("Presentation Layer", f"AES Key (Hex): {key.hex()}")
+        # Simulate encryption of the first block to show intermediate steps if possible
+        # (AES ECB is block-by-block, so input/output of block is the main detail)
+        encrypted_first_block = cipher.encrypt(first_block)
+        add_osi_log("Presentation Layer", f"Encrypted First Block (Hex): {encrypted_first_block.hex()}")
+        add_osi_log("Presentation Layer", "--- End Detailed Encryption for First Block ---\n")
 
     start_enc = time.time()
     for i, block in enumerate(blocks):
@@ -73,15 +91,37 @@ def character_stuff(data):
     stuffed = bytearray()
     add_osi_log("Presentation Layer", "--- Character Stuffing Started ---")
     add_osi_log("Presentation Layer", f"Original Data Length (pre-stuffing): {len(data)} bytes")
+
+    # Detailed log for the first few bytes/block of stuffing
+    add_osi_log("Presentation Layer", "\n--- Detailed Character Stuffing for First Block/Bytes ---")
+    # Assuming we want to show how the first 16 bytes (or less if data is shorter) are stuffed
+    sample_data_for_stuffing = data[:min(len(data), 16)]
+    add_osi_log("Presentation Layer", f"Sample Input for Stuffing (Hex): {sample_data_for_stuffing.hex()}")
+    temp_stuffed_sample = bytearray()
+    for byte_val in sample_data_for_stuffing:
+        if byte_val == 0x7E: # FLAG byte
+            temp_stuffed_sample.append(0x7D) # ESCAPE byte
+            temp_stuffed_sample.append(byte_val ^ 0x20) # XOR with 0x20
+            add_osi_log("Presentation Layer", f"  Byte 0x{byte_val:02X} (FLAG) stuffed to 0x7D 0x{byte_val ^ 0x20:02X}")
+        elif byte_val == 0x7D: # ESCAPE byte
+            temp_stuffed_sample.append(0x7D)
+            temp_stuffed_sample.append(byte_val ^ 0x20)
+            add_osi_log("Presentation Layer", f"  Byte 0x{byte_val:02X} (ESCAPE) stuffed to 0x7D 0x{byte_val ^ 0x20:02X}")
+        else:
+            temp_stuffed_sample.append(byte_val)
+            add_osi_log("Presentation Layer", f"  Byte 0x{byte_val:02X} (Normal) appended as is")
+    add_osi_log("Presentation Layer", f"Stuffed Sample Output (Hex): {bytes(temp_stuffed_sample).hex()}")
+    add_osi_log("Presentation Layer", "--- End Detailed Character Stuffing ---\n")
+
     for byte in data:
         if byte == 0x7E: # FLAG byte
             stuffed.append(0x7D) # ESCAPE byte
             stuffed.append(byte ^ 0x20) # XOR with 0x20
-            add_osi_log("Presentation Layer", f"Stuffed FLAG byte (0x7E) -> 0x7D 0x{byte ^ 0x20:02X}")
+            # add_osi_log("Presentation Layer", f"Stuffed FLAG byte (0x7E) -> 0x7D 0x{byte ^ 0x20:02X}") # Moved to detailed log
         elif byte == 0x7D: # ESCAPE byte
             stuffed.append(0x7D)
             stuffed.append(byte ^ 0x20)
-            add_osi_log("Presentation Layer", f"Stuffed ESCAPE byte (0x7D) -> 0x7D 0x{byte ^ 0x20:02X}")
+            # add_osi_log("Presentation Layer", f"Stuffed ESCAPE byte (0x7D) -> 0x7D 0x{byte ^ 0x20:02X}") # Moved to detailed log
         else:
             stuffed.append(byte)
     add_osi_log("Presentation Layer", f"Stuffed Data Length: {len(stuffed)} bytes")
@@ -234,13 +274,13 @@ def plot_rip_graph(rip_table, source=None, target=None):
     nx.draw_networkx_edge_labels(G, pos, edge_labels=labels, font_size=10, ax=ax)
     
     if source is not None and target is not None:
-        add_osi_log("Network Layer", f"Calculating shortest path from Node {source} to Node {target} using Dijkstra's algorithm.")
+        add_osi_log("Network Layer", f"Calculating shortest path from Node {source} to Node {target} using Dijkstra\"s algorithm.")
         try:
             path = nx.dijkstra_path(G, source=source, target=target, weight="weight")
             path_edges = list(zip(path, path[1:]))
             total_distance = nx.dijkstra_path_length(G, source=source, target=target, weight="weight")
             
-            add_osi_log("Network Layer", f"Shortest Path Found: {' -> '.join(map(str, path))} (Total Cost: {total_distance})")
+            add_osi_log("Network Layer", f"Shortest Path Found: {" -> ".join(map(str, path))} (Total Cost: {total_distance})")
             add_osi_log("Network Layer", "Highlighting path on graph.")
 
             # Highlight shortest path edges with a distinct color, thicker line, and solid style
@@ -256,19 +296,19 @@ def plot_rip_graph(rip_table, source=None, target=None):
             nx.draw_networkx_nodes(G, pos, nodelist=intermediate_nodes, node_color="yellow", node_size=1100, ax=ax)
             
             # Add title with path information
-            ax.set_title(f"RIP Routing Topology\nShortest Path: {' → '.join(map(str, path))}\nTotal Distance: {total_distance}", 
+            ax.set_title(f"RIP Routing Topology\nShortest Path: {" → ".join(map(str, path))}\nTotal Distance: {total_distance}", 
                         fontsize=14, fontweight="bold")
             
             # Add legend
             legend_elements = [
-                plt.Line2D([0], [0], marker='o', color='w', markerfacecolor='green', markersize=10, label='Source Node'),
-                plt.Line2D([0], [0], marker='o', color='w', markerfacecolor='red', markersize=10, label='Target Node'),
-                plt.Line2D([0], [0], marker='o', color='w', markerfacecolor='yellow', markersize=10, label='Intermediate Node'),
-                plt.Line2D([0], [0], color='red', linewidth=3, label='Shortest Path')
+                plt.Line2D([0], [0], marker=\'o\', color=\'w\', markerfacecolor=\'green\', markersize=10, label=\'Source Node\'),
+                plt.Line2D([0], [0], marker=\'o\', color=\'w\', markerfacecolor=\'red\', markersize=10, label=\'Target Node\'),
+                plt.Line2D([0], [0], marker=\'o\', color=\'w\', markerfacecolor=\'yellow\', markersize=10, label=\'Intermediate Node\'),
+                plt.Line2D([0], [0], color=\'red\', linewidth=3, label=\'Shortest Path\')
             ]
-            ax.legend(handles=legend_elements, loc='upper right')
+            ax.legend(handles=legend_elements, loc=\'upper right\')
             
-            st.success(f"🔀 Shortest path from {source} to {target}: {' → '.join(map(str, path))} (Distance: {total_distance})")
+            st.success(f"🔀 Shortest path from {source} to {target}: {" → ".join(map(str, path))} (Distance: {total_distance})")
             
         except nx.NetworkXNoPath:
             add_osi_log("Network Layer", f"No path found from Node {source} to Node {target}.")
@@ -278,7 +318,7 @@ def plot_rip_graph(rip_table, source=None, target=None):
         add_osi_log("Network Layer", "No source or target specified for shortest path calculation.")
         ax.set_title("RIP Routing Topology", fontsize=14, fontweight="bold")
     
-    ax.axis('off')
+    ax.axis(\'off\')
     st.pyplot(fig)
     plt.close(fig) # Close the figure to prevent memory issues
     add_osi_log("Network Layer", "--- RIP Routing Graph Generation Finished ---")
@@ -334,10 +374,10 @@ def display_osi_stack():
             "data_unit": "Packets",
             "functions": [
                 "RIP Routing (plot_rip_graph)",
-                "Dijkstra's algorithm for shortest path (nx.dijkstra_path)",
+                "Dijkstra\"s algorithm for shortest path (nx.dijkstra_path)",
                 "Graph visualization of network topology"
             ],
-            "data_flow": "Receives segments/packets from the Transport Layer. Determines the optimal route for these packets using RIP and Dijkstra's algorithm. Passes packets to the Data Link Layer.",
+            "data_flow": "Receives segments/packets from the Transport Layer. Determines the optimal route for these packets using RIP and Dijkstra\"s algorithm. Passes packets to the Data Link Layer.",
             "log_key": "Network Layer"
         },
         "2. Data Link Layer": {
@@ -361,19 +401,36 @@ def display_osi_stack():
     }
 
     for layer_name, details in osi_layers_details.items():
-        with st.expander(f"**{layer_name}** - {details['data_unit']}"):
-            st.write(f"**Description:** {details['description']}")
+        with st.expander(f"**{layer_name}** - {details["data_unit"]}"):
+            st.write(f"**Description:** {details["description"]}")
             st.write(f"**Key Functions in Script:**")
             for func in details["functions"]:
                 st.markdown(f"- {func}")
-            st.write(f"**Data Flow:** {details['data_flow']}")
+            st.write(f"**Data Flow:** {details["data_flow"]}")
             
             if "log_key" in details and osi_logs[details["log_key"]]:
                 st.subheader("Real-time Log:")
                 for log_entry in osi_logs[details["log_key"]]:
                     st.code(log_entry, language="text")
             elif "log_key" in details:
-                st.info(f"No real-time logs available for {details['log_key']}. Run the simulation to generate logs.")
+                st.info(f"No real-time logs available for {details["log_key"]}. Run the simulation to generate logs.")
+
+    # Export OSI Logs to Excel
+    st.subheader("📊 Export OSI Logs")
+    if st.button("Download OSI Logs as Excel"): # Added a button for clarity
+        excel_buffer = io.BytesIO()
+        with pd.ExcelWriter(excel_buffer, engine=\'xlsxwriter\') as writer:
+            for layer, logs in osi_logs.items():
+                if logs:
+                    df_log = pd.DataFrame({"Log Entry": logs})
+                    df_log.to_excel(writer, sheet_name=layer, index=False)
+        excel_buffer.seek(0)
+        st.download_button(
+            label="Download OSI Logs",
+            data=excel_buffer,
+            file_name="osi_logs.xlsx",
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        )
 
 # ========================
 # Main Streamlit App
@@ -472,7 +529,7 @@ def main():
 
         # Encryption and stuffing
         key = b"thisisasecretkey"
-        encrypted_data = aes_encrypt_visual(data, key)
+        encrypted_data = aes_encrypt_visual(data.encode(), key) # Ensure data is bytes
         stuffed_data = character_stuff(encrypted_data)
 
         if error_rate > 0:
