@@ -433,7 +433,7 @@ def display_osi_stack():
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
         )
     # Export OSI Logs to Excel
-   st.subheader("📊 Export OSI Logs")
+    st.subheader("📊 Export OSI Logs")
 
 
 # ========================
