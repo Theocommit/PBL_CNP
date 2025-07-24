@@ -234,13 +234,13 @@ def plot_rip_graph(rip_table, source=None, target=None):
     nx.draw_networkx_edge_labels(G, pos, edge_labels=labels, font_size=10, ax=ax)
     
     if source is not None and target is not None:
-        add_osi_log("Network Layer", f"Calculating shortest path from Node {source} to Node {target} using Dijkstra\"s algorithm.")
+        add_osi_log("Network Layer", f"Calculating shortest path from Node {source} to Node {target} using Dijkstra's algorithm.")
         try:
             path = nx.dijkstra_path(G, source=source, target=target, weight="weight")
             path_edges = list(zip(path, path[1:]))
             total_distance = nx.dijkstra_path_length(G, source=source, target=target, weight="weight")
             
-            add_osi_log("Network Layer", f"Shortest Path Found: {" -> ".join(map(str, path))} (Total Cost: {total_distance})")
+            add_osi_log("Network Layer", f"Shortest Path Found: {' -> '.join(map(str, path))} (Total Cost: {total_distance})")
             add_osi_log("Network Layer", "Highlighting path on graph.")
 
             # Highlight shortest path edges with a distinct color, thicker line, and solid style
@@ -256,19 +256,19 @@ def plot_rip_graph(rip_table, source=None, target=None):
             nx.draw_networkx_nodes(G, pos, nodelist=intermediate_nodes, node_color="yellow", node_size=1100, ax=ax)
             
             # Add title with path information
-            ax.set_title(f"RIP Routing Topology\nShortest Path: {" → ".join(map(str, path))}\nTotal Distance: {total_distance}", 
+            ax.set_title(f"RIP Routing Topology\nShortest Path: {' → '.join(map(str, path))}\nTotal Distance: {total_distance}", 
                         fontsize=14, fontweight="bold")
             
             # Add legend
             legend_elements = [
-                plt.Line2D([0], [0], marker=\'o\', color=\'w\', markerfacecolor=\'green\', markersize=10, label=\'Source Node\'),
-                plt.Line2D([0], [0], marker=\'o\', color=\'w\', markerfacecolor=\'red\', markersize=10, label=\'Target Node\'),
-                plt.Line2D([0], [0], marker=\'o\', color=\'w\', markerfacecolor=\'yellow\', markersize=10, label=\'Intermediate Node\'),
-                plt.Line2D([0], [0], color=\'red\', linewidth=3, label=\'Shortest Path\')
+                plt.Line2D([0], [0], marker='o', color='w', markerfacecolor='green', markersize=10, label='Source Node'),
+                plt.Line2D([0], [0], marker='o', color='w', markerfacecolor='red', markersize=10, label='Target Node'),
+                plt.Line2D([0], [0], marker='o', color='w', markerfacecolor='yellow', markersize=10, label='Intermediate Node'),
+                plt.Line2D([0], [0], color='red', linewidth=3, label='Shortest Path')
             ]
-            ax.legend(handles=legend_elements, loc=\'upper right\')
+            ax.legend(handles=legend_elements, loc='upper right')
             
-            st.success(f"🔀 Shortest path from {source} to {target}: {" → ".join(map(str, path))} (Distance: {total_distance})")
+            st.success(f"🔀 Shortest path from {source} to {target}: {' → '.join(map(str, path))} (Distance: {total_distance})")
             
         except nx.NetworkXNoPath:
             add_osi_log("Network Layer", f"No path found from Node {source} to Node {target}.")
@@ -278,7 +278,7 @@ def plot_rip_graph(rip_table, source=None, target=None):
         add_osi_log("Network Layer", "No source or target specified for shortest path calculation.")
         ax.set_title("RIP Routing Topology", fontsize=14, fontweight="bold")
     
-    ax.axis(\'off\')
+    ax.axis('off')
     st.pyplot(fig)
     plt.close(fig) # Close the figure to prevent memory issues
     add_osi_log("Network Layer", "--- RIP Routing Graph Generation Finished ---")
@@ -334,10 +334,10 @@ def display_osi_stack():
             "data_unit": "Packets",
             "functions": [
                 "RIP Routing (plot_rip_graph)",
-                "Dijkstra\"s algorithm for shortest path (nx.dijkstra_path)",
+                "Dijkstra's algorithm for shortest path (nx.dijkstra_path)",
                 "Graph visualization of network topology"
             ],
-            "data_flow": "Receives segments/packets from the Transport Layer. Determines the optimal route for these packets using RIP and Dijkstra\"s algorithm. Passes packets to the Data Link Layer.",
+            "data_flow": "Receives segments/packets from the Transport Layer. Determines the optimal route for these packets using RIP and Dijkstra's algorithm. Passes packets to the Data Link Layer.",
             "log_key": "Network Layer"
         },
         "2. Data Link Layer": {
@@ -361,19 +361,19 @@ def display_osi_stack():
     }
 
     for layer_name, details in osi_layers_details.items():
-        with st.expander(f"**{layer_name}** - {details["data_unit"]}"):
-            st.write(f"**Description:** {details["description"]}")
+        with st.expander(f"**{layer_name}** - {details['data_unit']}"):
+            st.write(f"**Description:** {details['description']}")
             st.write(f"**Key Functions in Script:**")
             for func in details["functions"]:
                 st.markdown(f"- {func}")
-            st.write(f"**Data Flow:** {details["data_flow"]}")
+            st.write(f"**Data Flow:** {details['data_flow']}")
             
             if "log_key" in details and osi_logs[details["log_key"]]:
                 st.subheader("Real-time Log:")
                 for log_entry in osi_logs[details["log_key"]]:
                     st.code(log_entry, language="text")
             elif "log_key" in details:
-                st.info(f"No real-time logs available for {details["log_key"]}. Run the simulation to generate logs.")
+                st.info(f"No real-time logs available for {details['log_key']}. Run the simulation to generate logs.")
 
 # ========================
 # Main Streamlit App
@@ -566,4 +566,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
