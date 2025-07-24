@@ -301,13 +301,12 @@ def plot_rip_graph(rip_table, source=None, target=None):
             
             # Add legend
             legend_elements = [
-    plt.Line2D([0], [0], marker='o', color='w', markerfacecolor='green', markersize=10, label='Source Node'),
-    plt.Line2D([0], [0], marker='o', color='w', markerfacecolor='red', markersize=10, label='Target Node'),
-    plt.Line2D([0], [0], marker='o', color='w', markerfacecolor='yellow', markersize=10, label='Intermediate Node'),
-    plt.Line2D([0], [0], color='red', linewidth=3, label='Shortest Path')
-                ]
-
-            ax.legend(handles=legend_elements, loc='upper right')
+                plt.Line2D([0], [0], marker=\'o\', color=\'w\', markerfacecolor=\'green\', markersize=10, label=\'Source Node\'),
+                plt.Line2D([0], [0], marker=\'o\', color=\'w\', markerfacecolor=\'red\', markersize=10, label=\'Target Node\'),
+                plt.Line2D([0], [0], marker=\'o\', color=\'w\', markerfacecolor=\'yellow\', markersize=10, label=\'Intermediate Node\'),
+                plt.Line2D([0], [0], color=\'red\', linewidth=3, label=\'Shortest Path\')
+            ]
+            ax.legend(handles=legend_elements, loc=\'upper right\')
             
             st.success(f"🔀 Shortest path from {source} to {target}: {" → ".join(map(str, path))} (Distance: {total_distance})")
             
@@ -319,7 +318,7 @@ def plot_rip_graph(rip_table, source=None, target=None):
         add_osi_log("Network Layer", "No source or target specified for shortest path calculation.")
         ax.set_title("RIP Routing Topology", fontsize=14, fontweight="bold")
     
-    ax.axis('off')
+    ax.axis(\'off\')
     st.pyplot(fig)
     plt.close(fig) # Close the figure to prevent memory issues
     add_osi_log("Network Layer", "--- RIP Routing Graph Generation Finished ---")
@@ -420,7 +419,7 @@ def display_osi_stack():
     st.subheader("📊 Export OSI Logs")
     if st.button("Download OSI Logs as Excel"): # Added a button for clarity
         excel_buffer = io.BytesIO()
-        with pd.ExcelWriter(excel_buffer, engine='xlsxwriter') as writer:
+        with pd.ExcelWriter(excel_buffer, engine=\'xlsxwriter\') as writer:
             for layer, logs in osi_logs.items():
                 if logs:
                     df_log = pd.DataFrame({"Log Entry": logs})
@@ -530,7 +529,7 @@ def main():
 
         # Encryption and stuffing
         key = b"thisisasecretkey"
-        encrypted_data = aes_encrypt_visual(data.encode(), key) # Ensure data is bytes
+        encrypted_data = aes_encrypt_visual(data, key) # data is already bytes
         stuffed_data = character_stuff(encrypted_data)
 
         if error_rate > 0:
