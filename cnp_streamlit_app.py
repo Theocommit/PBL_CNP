@@ -295,7 +295,7 @@ def simulate_tcp_on_data(total_packets, ssthresh_init, loss_packets, variant="Ta
                 dup_ack_count[last_acked] = dup_ack_count.get(last_acked, 0) + 1
                 add_osi_log("Transport Layer", f"{log_message} -> Packet {i} ACKED. Duplicate ACK for packet {last_acked} (Count: {dup_ack_count[last_acked]})")
                 if dup_ack_count[last_acked] >= 3:
-                    ssthresh = max(cwnd / 2, 1)  # Corrected to halve SSTHRESH
+                    ssthresh = max(int(cwnd / 2), 1)  # Ensure integer division
                     retransmitted_packets.append(lost_packet)
                     if variant == "Tahoe":
                         cwnd = 1
