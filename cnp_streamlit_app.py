@@ -261,7 +261,7 @@ def simulate_tcp_on_data(total_packets, ssthresh_init, loss_packets, variant="Ta
     ack_series, state_series, transitions = [], [], []
     dup_ack_count = {}
     last_acked = -1
-    lost_packets_queue = []  # Queue to track all lost packets
+    lost_packets_queue = []
     retransmitted_packets = []
     add_osi_log("Transport Layer", "--- TCP Congestion Control Simulation Started ---")
     add_osi_log("Transport Layer", f"Initial CWND: {cwnd}, Initial SSTHRESH: {ssthresh_init}, TCP Variant: {variant}")
@@ -290,32 +290,18 @@ def simulate_tcp_on_data(total_packets, ssthresh_init, loss_packets, variant="Ta
                 add_osi_log("Transport Layer", f"{log_message} -> Packet {i} LOST (Timeout). New SSTHRESH: {int(ssthresh)}, New CWND: {cwnd}, State: {state}")
         else:
             if lost_packets_queue and last_acked >= 0:
-                for lp in lost_packets_queue[:]:  # Iterate over a copy to modify queue
+                for lp in lost_packets_queue[:]:  # Copy to allow modification
                     dup_ack_count[last_acked] = dup_ack_count.get(last_acked, 0) + 1
                     add_osi_log("Transport Layer", f"{log_message} -> Packet {i} ACKED. Duplicate ACK for packet {last_acked} (Count: {dup_ack_count[last_acked]})")
-                    if dup_ack_count[last_acked] >= 3:
+                    if dup_ack_count[last_acked] >= 3 or (time_step - time_series[-1] > 3.0 and not dup_ack_count.get(last_acked, 0)):
                         ssthresh = max(int(cwnd / 2), 1)
                         retransmitted_packets.append(lp)
                         if variant == "Tahoe":
                             cwnd = 1
                             state = "Slow Start"
-                            add_osi_log("Transport Layer", f"{log_message} -> Fast Retransmit for packet {lp}. New SSTHRESH: {int(ssthresh)}, New CWND: {cwnd}, State: {state}")
-                        else:  # Reno
-                            cwnd = ssthresh + 3
-                            state = "Fast Recovery"
-                            add_osi_log("Transport Layer", f"{log_message} -> Fast Retransmit for packet {lp}. Enter Fast Recovery. New SSTHRESH: {int(ssthresh)}, New CWND: {cwnd}, State: {state}")
+                        add_osi_log("Transport Layer", f"{log_message} -> {'Fast Retransmit' if dup_ack_count[last_acked] >= 3 else 'Timeout'} for packet {lp}. New SSTHRESH: {int(ssthresh)}, New CWND: {cwnd}, State: {state}")
                         lost_packets_queue.remove(lp)
                         dup_ack_count[last_acked] = 0
-                        time_step += 0.1 + propagation_delay
-                        i += 1
-                        break  # Handle one retransmit per iteration
-                    elif time_step - time_series[-1] > 3.0:  # Simple timeout (3 seconds)
-                        ssthresh = max(int(cwnd / 2), 1)
-                        cwnd = 1
-                        state = "Slow Start"
-                        retransmitted_packets.append(lp)
-                        add_osi_log("Transport Layer", f"{log_message} -> Timeout for packet {lp}. New SSTHRESH: {int(ssthresh)}, New CWND: {cwnd}, State: {state}")
-                        lost_packets_queue.remove(lp)
                         time_step += 0.1 + propagation_delay
                         i += 1
                         break
@@ -331,9 +317,6 @@ def simulate_tcp_on_data(total_packets, ssthresh_init, loss_packets, variant="Ta
                 last_acked = i
                 dup_ack_count[i] = 0
         i += 1
-        if state == "Fast Recovery" and variant == "Reno":
-            cwnd += 1
-            add_osi_log("Transport Layer", f"{log_message} -> In Fast Recovery, CWND inflated: {cwnd}")
         time_step += 1.0 + propagation_delay
     add_osi_log("Transport Layer", f"Total simulation time: {time_step:.3f} seconds")
     add_osi_log("Transport Layer", f"Retransmitted Packets: {retransmitted_packets}")
