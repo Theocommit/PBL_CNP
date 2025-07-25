@@ -261,6 +261,7 @@ def simulate_tcp_on_data(total_packets, ssthresh_init, loss_packets, variant="Ta
     ack_series, state_series, transitions = [], [], []
     dup_ack_count = {}
     last_acked = -1
+    lost_packet = None  # Track the most recent lost packet
     retransmitted_packets = []
     add_osi_log("Transport Layer", "--- TCP Congestion Control Simulation Started ---")
     add_osi_log("Transport Layer", f"Initial CWND: {cwnd}, Initial SSTHRESH: {ssthresh_init}, TCP Variant: {variant}")
@@ -278,28 +279,37 @@ def simulate_tcp_on_data(total_packets, ssthresh_init, loss_packets, variant="Ta
         ack_series.append(i)
         log_message = f"Time: {time_step:.3f}, CWND: {cwnd:.2f}, SSTHRESH: {int(ssthresh)}, State: {state}"
         if i in loss_packets:
-            dup_ack_count[last_acked] = dup_ack_count.get(last_acked, 0) + 1
-            add_osi_log("Transport Layer", f"{log_message} -> Packet {i} LOST. Duplicate ACK for packet {last_acked} (Count: {dup_ack_count[last_acked]})")
-            if dup_ack_count.get(last_acked, 0) >= 3:
-                ssthresh = max(cwnd / 2, 1)
-                retransmitted_packets.append(i)
-                if variant == "Tahoe":
-                    cwnd = 1
-                    state = "Slow Start"
-                    add_osi_log("Transport Layer", f"{log_message} -> Fast Retransmit for packet {i}. New SSTHRESH: {int(ssthresh)}, New CWND: {cwnd}, State: {state}")
-                else:
-                    cwnd = ssthresh + 3
-                    state = "Fast Recovery"
-                    add_osi_log("Transport Layer", f"{log_message} -> Fast Retransmit for packet {i}. Enter Fast Recovery. New SSTHRESH: {int(ssthresh)}, New CWND: {cwnd}, State: {state}")
-                dup_ack_count[last_acked] = 0
-                time_step += 0.1 + propagation_delay
-                continue
+            if last_acked >= 0:  # Ensure there's a previous acknowledged packet
+                lost_packet = i
+                dup_ack_count[last_acked] = dup_ack_count.get(last_acked, 0) + 1
+                add_osi_log("Transport Layer", f"{log_message} -> Packet {i} LOST. Duplicate ACK for packet {last_acked} (Count: {dup_ack_count[last_acked]})")
             else:
+                # Initial loss (no prior ack), treat as timeout
                 ssthresh = max(cwnd / 2, 1)
                 cwnd = 1
                 state = "Slow Start"
                 add_osi_log("Transport Layer", f"{log_message} -> Packet {i} LOST (Timeout). New SSTHRESH: {int(ssthresh)}, New CWND: {cwnd}, State: {state}")
         else:
+            if lost_packet is not None and last_acked >= 0:
+                # Continue counting duplicate ACKs for the lost packet
+                dup_ack_count[last_acked] = dup_ack_count.get(last_acked, 0) + 1
+                add_osi_log("Transport Layer", f"{log_message} -> Packet {i} ACKED. Duplicate ACK for packet {last_acked} (Count: {dup_ack_count[last_acked]})")
+                if dup_ack_count[last_acked] >= 3:
+                    ssthresh = max(cwnd / 2, 1)
+                    retransmitted_packets.append(lost_packet)
+                    if variant == "Tahoe":
+                        cwnd = 1
+                        state = "Slow Start"
+                        add_osi_log("Transport Layer", f"{log_message} -> Fast Retransmit for packet {lost_packet}. New SSTHRESH: {int(ssthresh)}, New CWND: {cwnd}, State: {state}")
+                    else:
+                        cwnd = ssthresh + 3
+                        state = "Fast Recovery"
+                        add_osi_log("Transport Layer", f"{log_message} -> Fast Retransmit for packet {lost_packet}. Enter Fast Recovery. New SSTHRESH: {int(ssthresh)}, New CWND: {cwnd}, State: {state}")
+                    dup_ack_count[last_acked] = 0
+                    lost_packet = None
+                    time_step += 0.1 + propagation_delay
+                    i += 1  # Move past the lost packet after retransmit
+                    continue
             if state == "Fast Recovery" and variant == "Reno":
                 cwnd = ssthresh
                 state = "Congestion Avoidance"
