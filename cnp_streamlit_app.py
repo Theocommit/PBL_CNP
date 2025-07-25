@@ -264,4 +264,212 @@ def simulate_tcp_on_data(total_packets, ssthresh_init, loss_packets, variant="Ta
     lost_packet = None  # Track the most recent lost packet
     retransmitted_packets = []
     add_osi_log("Transport Layer", "--- TCP Congestion Control Simulation Started ---")
-    add_osi_log("Transport Layer", f"Initial CWND: {cwnd}, Initial SSTHRESH: {ssth
+    add_osi_log("Transport Layer", f"Initial CWND: {cwnd}, Initial SSTHRESH: {ssthresh_init}, TCP Variant: {variant}")
+    add_osi_log("Transport Layer", f"Total Packets to simulate: {total_packets}")
+    add_osi_log("Transport Layer", f"Pre-defined Loss Packets: {loss_packets}")
+    add_osi_log("Transport Layer", f"Propagation Delay per Packet: {propagation_delay:.3f} seconds")
+    time_step = 0.0
+    i = 0
+    while i < total_packets:
+        time_series.append(time_step)
+        cwnd_series.append(cwnd)
+        ssthresh_series.append(int(ssthresh))
+        state_series.append(state)
+        transitions.append((time_step, cwnd))
+        ack_series.append(i)
+        log_message = f"Time: {time_step:.3f}, CWND: {cwnd:.2f}, SSTHRESH: {int(ssthresh)}, State: {state}"
+        if i in loss_packets:
+            if last_acked >= 0:  # Ensure there's a previous acknowledged packet
+                lost_packet = i
+                dup_ack_count[last_acked] = dup_ack_count.get(last_acked, 0) + 1
+                add_osi_log("Transport Layer", f"{log_message} -> Packet {i} LOST. Duplicate ACK for packet {last_acked} (Count: {dup_ack_count[last_acked]})")
+            else:
+                # Initial loss (no prior ack), treat as timeout
+                ssthresh = max(cwnd / 2, 1)
+                cwnd = 1
+                state = "Slow Start"
+                add_osi_log("Transport Layer", f"{log_message} -> Packet {i} LOST (Timeout). New SSTHRESH: {int(ssthresh)}, New CWND: {cwnd}, State: {state}")
+        else:
+            if lost_packet is not None and last_acked >= 0:
+                # Continue counting duplicate ACKs for the lost packet
+                dup_ack_count[last_acked] = dup_ack_count.get(last_acked, 0) + 1
+                add_osi_log("Transport Layer", f"{log_message} -> Packet {i} ACKED. Duplicate ACK for packet {last_acked} (Count: {dup_ack_count[last_acked]})")
+                if dup_ack_count[last_acked] >= 3:
+                    ssthresh = max(cwnd / 2, 1)  # Corrected to halve SSTHRESH
+                    retransmitted_packets.append(lost_packet)
+                    if variant == "Tahoe":
+                        cwnd = 1
+                        state = "Slow Start"
+                        add_osi_log("Transport Layer", f"{log_message} -> Fast Retransmit for packet {lost_packet}. New SSTHRESH: {int(ssthresh)}, New CWND: {cwnd}, State: {state}")
+                    else:
+                        cwnd = ssthresh + 3
+                        state = "Fast Recovery"
+                        add_osi_log("Transport Layer", f"{log_message} -> Fast Retransmit for packet {lost_packet}. Enter Fast Recovery. New SSTHRESH: {int(ssthresh)}, New CWND: {cwnd}, State: {state}")
+                    dup_ack_count[last_acked] = 0
+                    lost_packet = None
+                    time_step += 0.1 + propagation_delay
+                    i += 1  # Move past the lost packet after retransmit
+                    continue
+            if state == "Fast Recovery" and variant == "Reno":
+                cwnd = ssthresh
+                state = "Congestion Avoidance"
+                add_osi_log("Transport Layer", f"{log_message} -> Packet {i} ACKED. Exit Fast Recovery. New CWND: {cwnd}, State: {state}")
+            else:
+                if state == "Slow Start":
+                    cwnd *= 2
+                    if cwnd >= ssthresh:
+                        state = "Congestion Avoidance"
+                    add_osi_log("Transport Layer", f"{log_message} -> Packet {i} ACKED. Slow Start. New CWND: {cwnd}, State: {state}")
+                elif state == "Congestion Avoidance":
+                    cwnd += 1
+                    add_osi_log("Transport Layer", f"{log_message} -> Packet {i} ACKED. Congestion Avoidance. New CWND: {cwnd}")
+            last_acked = i
+            dup_ack_count[i] = 0
+        i += 1
+        if state == "Fast Recovery" and variant == "Reno":
+            cwnd += 1
+            add_osi_log("Transport Layer", f"{log_message} -> In Fast Recovery, CWND inflated: {cwnd}")
+        time_step += 1.0 + propagation_delay
+    add_osi_log("Transport Layer", f"Total simulation time: {time_step:.3f} seconds")
+    add_osi_log("Transport Layer", f"Retransmitted Packets: {retransmitted_packets}")
+    add_osi_log("Transport Layer", "--- TCP Congestion Control Simulation Finished ---")
+    return time_series, cwnd_series, ssthresh_series, ack_series, state_series, transitions, retransmitted_packets
+
+def main():
+    st.title("🚀 Network Simulation with AES, Stuffing, RIP, and TCP")
+    st.header("📄 1. Data Input")
+    uploaded_file = st.file_uploader("📂 Upload input text file", type=["txt"])
+    if not uploaded_file:
+        st.warning("Please upload a .txt file to begin.")
+        return
+    data = uploaded_file.read().strip()
+    st.text_area("📄 Input Data", data.decode(), height=150)
+    st.header("🌐 2. Network Configuration")
+    col1, col2 = st.columns(2)
+    with col1:
+        num_nodes = st.number_input("🧝 Number of RIP Nodes", min_value=1, value=3)
+        error_rate = st.slider("💥 Bit Error Rate (%)", 0, 100, 0)
+    with col2:
+        packet_size = st.number_input("📦 MSS (Max Segment Size)", min_value=1, value=64)
+        loss_rate = st.slider("📉 Packet Loss Rate (%)", 0, 100, 20)
+    st.subheader("📡 RIP Routing Table Configuration")
+    rip_table = []
+    for i in range(num_nodes):
+        with st.expander(f"**Node {i}** Routing Configuration"):
+            num_routes = st.number_input(f"Routes for Node {i}", min_value=1, max_value=5, value=2, key=f"r{i}")
+            for j in range(num_routes):
+                col1, col2, col3 = st.columns(3)
+                with col1:
+                    dest = st.number_input("Destination", min_value=0, value=0, key=f"d_{i}_{j}")
+                with col2:
+                    next_hop = st.number_input("Next Hop", min_value=0, value=0, key=f"h_{i}_{j}")
+                with col3:
+                    distance = st.number_input("Distance", min_value=1, value=1, key=f"dist_{i}_{j}")
+                rip_table.append({"node": i, "dest": dest, "next_hop": next_hop, "distance": distance})
+    if rip_table:
+        st.subheader("📊 Current RIP Routing Table")
+        df_rip = pd.DataFrame(rip_table)
+        st.dataframe(df_rip, use_container_width=True)
+    else:
+        st.info("No RIP entries defined yet.")
+    st.header("🚛 3. Transport Layer Configuration")
+    col1, col2 = st.columns(2)
+    with col1:
+        ssthresh_init = st.number_input("🔧 Initial SSTHRESH", min_value=1, value=8)
+        propagation_delay_ms = st.number_input("⏱️ Propagation Delay per Packet (ms)", min_value=0.0, value=10.0, step=0.1)
+    with col2:
+        variant = st.selectbox("⚙️ TCP Variant", ["Tahoe", "Reno"], help="Tahoe: Slow Start, Congestion Avoidance, Fast Retransmit. Reno: Adds Fast Recovery.")
+    st.header("🎯 4. Path Selection")
+    col1, col2 = st.columns(2)
+    with col1:
+        source = st.number_input("From Node", min_value=0, value=0)
+    with col2:
+        target = st.number_input("To Node", min_value=0, value=1)
+    st.header("🚀 5. Run Simulation")
+    if st.button("🚀 Run Full Network Simulation", type="primary"):
+        for layer in osi_logs:
+            osi_logs[layer].clear()
+        loss_packets = sorted(random.sample(range((len(data)+packet_size-1)//packet_size), int((loss_rate / 100) * ((len(data)+packet_size-1)//packet_size))))
+        add_osi_log("Physical Layer", f"Configured Bit Error Rate: {error_rate}%")
+        add_osi_log("Physical Layer", f"Configured Packet Loss Rate: {loss_rate}%")
+        add_osi_log("Physical Layer", f"Total Packets to be sent: {(len(data)+packet_size-1)//packet_size}")
+        add_osi_log("Physical Layer", f"Simulated Lost Packets (indices): {loss_packets}")
+        propagation_delay = propagation_delay_ms / 1000.0
+        key = b"thisisasecretkey"
+        encrypted_data, encryption_time = aes_encrypt_visual(data, key)
+        stuffed_data = character_stuff(encrypted_data)
+        if error_rate > 0:
+            stuffed_data = simulate_bit_errors(stuffed_data, error_rate)
+        total_packets = (len(stuffed_data) + packet_size - 1) // packet_size
+        st.subheader("🔐 Encryption & Stuffing Output")
+        col1, col2 = st.columns(2)
+        with col1:
+            st.write(f"**Encrypted Data Length:** {len(encrypted_data)} bytes")
+            st.code(encrypted_data.hex()[:200] + "..." if len(encrypted_data.hex()) > 200 else encrypted_data.hex())
+        with col2:
+            st.write(f"**Stuffed Data Length:** {len(stuffed_data)} bytes")
+            st.code(stuffed_data.hex()[:200] + "..." if len(stuffed_data.hex()) > 200 else stuffed_data.hex())
+        st.write(f"**Total Packets:** {total_packets}")
+        st.write(f"**Lost Packets:** {loss_packets}")
+        time_series, cwnd_series, ssthresh_series, ack_series, state_series, transitions, retransmitted_packets = simulate_tcp_on_data(
+            total_packets, ssthresh_init, loss_packets, variant, propagation_delay)
+        st.subheader("📈 TCP CWND Evolution")
+        plot_graphs(time_series, cwnd_series, ssthresh_series, ack_series, transitions)
+        st.subheader("🌐 RIP Network Graph with Shortest Path")
+        plot_rip_graph(rip_table, source, target)
+        display_osi_stack()
+        st.subheader("📋 TCP Event Log")
+        event_data = []
+        for t, c, ssth, state in zip(time_series, cwnd_series, ssthresh_series, state_series):
+            event_data.append({
+                "Time": f"{t:.2f}",
+                "CWND": f"{c:.2f}",
+                "SSTHRESH": int(ssth),
+                "State": state
+            })
+        df_events = pd.DataFrame(event_data)
+        st.dataframe(df_events, use_container_width=True)
+        st.subheader("📤 Receiver Output")
+        try:
+            start_dec = time.time()
+            unstuffed = character_unstuff(stuffed_data)
+            decrypted = aes_decrypt(unstuffed, key)
+            end_dec = time.time()
+            decryption_time = end_dec - start_dec
+            st.code(decrypted.decode(errors="ignore"), language="text")
+        except Exception as e:
+            st.error("Decryption failed: " + str(e))
+            decryption_time = 0.0
+        total_chunks_sent = total_packets + len(retransmitted_packets)
+        successfully_delivered = total_chunks_sent - len(loss_packets)
+        lost_packets_count = len(loss_packets)
+        avg_latency_per_packet = time_series[-1] / total_chunks_sent if total_chunks_sent > 0 else 0.0
+        pdr = (successfully_delivered / total_chunks_sent) * 100 if total_chunks_sent > 0 else 0.0
+        packet_loss_rate = (lost_packets_count / total_chunks_sent) * 100 if total_chunks_sent > 0 else 0.0
+        st.subheader("📊 Simulation Results")
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            st.metric("Total Chunks Sent", total_chunks_sent)
+            st.metric("Successfully Delivered", successfully_delivered)
+        with col2:
+            st.metric("Lost Packets", lost_packets_count)
+            st.metric("Retransmitted Packets", len(retransmitted_packets))
+        with col3:
+            st.metric("Packet Delivery Ratio", f"{pdr:.2f}%")
+            st.metric("Avg Latency/Packet", f"{avg_latency_per_packet:.3f} sec")
+        st.subheader("🔐 Encryption/Decryption Overhead")
+        col1, col2 = st.columns(2)
+        with col1:
+            st.write("**Sender Side:**")
+            st.write(f"- Total: `{encryption_time:.4f}` sec")
+            st.write(f"- Avg per chunk: `{(encryption_time/total_chunks_sent):.4f}` sec")
+        with col2:
+            st.write("**Receiver Side:**")
+            st.write(f"- Total: `{decryption_time:.4f}` sec")
+            st.write(f"- Avg per chunk: `{(decryption_time/successfully_delivered):.4f}` sec")
+
+if __name__ == "__main__":
+    if platform.system() == "Emscripten":
+        asyncio.ensure_future(main())
+    else:
+        main()
