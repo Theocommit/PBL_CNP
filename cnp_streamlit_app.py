@@ -64,7 +64,7 @@ def plot_rip_graph(rip_table, source, target):
         nx.draw_networkx_edge_labels(G, pos, edge_labels=edge_labels)
         
         # Highlight shortest path
-        nx.draw_networkx_edges TAKE(G, pos, edgelist=path_edges, edge_color="green", width=2, arrows=True)
+        nx.draw_networkx_edges(G, pos, edgelist=path_edges, edge_color="green", width=2, arrows=True)
         
         # Draw node labels
         nx.draw_networkx_labels(G, pos, font_size=12, font_weight="bold")
